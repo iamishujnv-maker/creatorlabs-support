@@ -200,10 +200,9 @@ export default function CreatorLabsSupportApp() {
     <div className="page-wrapper">
       <div className="wireframe-container">
         <div>
-          {/* Header Bar: Brand Name + Language Switcher [EN | हिंदी] */}
+          {/* Header Bar: Language Switcher [EN | हिंदी] (no domain/brand at top) */}
           {screen === '1A' || screen === '1B' ? (
-            <div className="brand-top-header">
-              <span className="brand-text">{t.brand}</span>
+            <div className="top-header-row">
               <div className="lang-switcher">
                 <button
                   type="button"
@@ -232,6 +231,22 @@ export default function CreatorLabsSupportApp() {
                 <span>&larr;</span>
                 <span>{t.back}</span>
               </button>
+              <div className="lang-switcher">
+                <button
+                  type="button"
+                  className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
+                  onClick={() => setLang('en')}
+                >
+                  EN
+                </button>
+                <button
+                  type="button"
+                  className={`lang-btn ${lang === 'hi' ? 'active' : ''}`}
+                  onClick={() => setLang('hi')}
+                >
+                  हिंदी
+                </button>
+              </div>
             </div>
           )}
 
@@ -327,31 +342,37 @@ export default function CreatorLabsSupportApp() {
               ======================================================== */}
           {screen === '1B' && order && (
             <div>
-              {/* Green Registration Confirmation Banner */}
-              <div className="registered-banner">
-                <div className="banner-check-circle">✓</div>
-                <div>
-                  <div className="banner-title">{t.youAreRegistered}</div>
-                  <div className="banner-sub">
-                    {order.creatorName} • {formatDate(order.registrationDate)}
-                  </div>
+              {/* Registration Confirmation Text (No outer box) */}
+              <div className="registration-status-block">
+                <div className="registration-status-text">
+                  <span className="inline-check-icon">✓</span>
+                  <span>
+                    {lang === 'hi' ? (
+                      <>
+                        आपने <strong>{order.creatorName}</strong> के साथ <strong>{formatDate(order.registrationDate)}</strong> को वर्कशॉप के लिए रजिस्टर किया है
+                      </>
+                    ) : (
+                      <>
+                        You have registered for the workshop with <strong>{order.creatorName}</strong> on <strong>{formatDate(order.registrationDate)}</strong>
+                      </>
+                    )}
+                  </span>
                 </div>
-              </div>
-
-              {/* Masked Contact & Change Link */}
-              <div className="masked-row">
-                <span>
-                  {order.customerPhone
-                    ? maskPhone(order.customerPhone)
-                    : maskEmail(order.customerEmail)}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleResetTo1A}
-                  className="change-link"
-                >
-                  {t.change}
-                </button>
+                <div className="masked-contact-sub">
+                  <span>
+                    {order.customerPhone
+                      ? maskPhone(order.customerPhone)
+                      : maskEmail(order.customerEmail)}
+                  </span>
+                  <span className="dot-sep">•</span>
+                  <button
+                    type="button"
+                    onClick={handleResetTo1A}
+                    className="change-link"
+                  >
+                    {t.change}
+                  </button>
+                </div>
               </div>
 
               {/* Heading: What do you need? */}

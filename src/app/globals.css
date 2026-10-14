@@ -31,7 +31,7 @@ body {
   width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: var(--bg-page);
+  background-color: #ffffff;
   color: var(--text-main);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
@@ -44,38 +44,34 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 20px 16px;
+  justify-content: flex-start;
+  padding: 0;
+  background-color: #ffffff;
 }
 
 .wireframe-container {
   width: 100%;
-  max-width: 410px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
-  padding: 24px;
+  max-width: 440px;
+  background: #ffffff;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 24px 20px 32px 20px;
   display: flex;
   flex-direction: column;
   position: relative;
-  min-height: 540px;
+  min-height: 100vh;
+  min-height: 100dvh;
   justify-content: space-between;
 }
 
-/* Wireframe Top Header (Brand + Language Switcher) */
-.brand-top-header {
+/* Top Header Bar */
+.top-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-bottom: 24px;
-}
-
-.brand-text {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--text-main);
-  letter-spacing: -0.02em;
+  min-height: 36px;
 }
 
 /* Language Switcher Pill [EN | हिंदी] */
@@ -240,51 +236,51 @@ body {
 }
 
 /* Screen 1B: Help Options */
-.registered-banner {
-  background: var(--banner-green-bg);
-  border: 1px solid var(--banner-green-border);
-  border-radius: var(--radius-md);
-  padding: 14px 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+.registration-status-block {
+  margin-bottom: 24px;
 }
 
-.banner-check-circle {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #15803d;
-  color: #ffffff;
+.registration-status-text {
   display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: #1e293b;
+}
+
+.inline-check-icon {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 0.75rem;
   font-weight: 800;
   flex-shrink: 0;
+  margin-top: 3px;
 }
 
-.banner-title {
-  font-size: 0.95rem;
+.registration-status-text strong {
+  color: #0f172a;
   font-weight: 700;
-  color: #14532d;
 }
 
-.banner-sub {
-  font-size: 0.8rem;
-  color: #166534;
-  margin-top: 1px;
-}
-
-.masked-row {
+.masked-contact-sub {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
   font-size: 0.875rem;
   color: var(--text-muted);
-  margin-bottom: 22px;
-  padding: 0 4px;
+  margin-top: 6px;
+  padding-left: 34px;
+}
+
+.dot-sep {
+  color: #cbd5e1;
 }
 
 .change-link {
@@ -295,6 +291,7 @@ body {
   cursor: pointer;
   font-size: 0.875rem;
   font-family: inherit;
+  padding: 0;
 }
 
 .change-link:hover {
@@ -302,11 +299,12 @@ body {
 }
 
 .section-heading-lg {
-  font-size: 1.35rem;
+  font-size: 1.45rem;
   font-weight: 800;
   color: var(--text-main);
   letter-spacing: -0.02em;
-  margin-bottom: 14px;
+  margin-top: 26px;
+  margin-bottom: 16px;
 }
 
 /* 3 Help Option Cards */
@@ -366,8 +364,9 @@ body {
 .back-header-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 18px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  min-height: 36px;
 }
 
 .btn-back-nav {
