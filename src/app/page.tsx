@@ -3,14 +3,6 @@
 import React, { useState } from 'react';
 import { SupportFlowResult } from '@/lib/mongodb';
 
-interface ChatMessage {
-  id: string;
-  sender: 'bot' | 'user';
-  text: string;
-  type?: 'text' | 'zoom' | 'whatsapp' | 'course_support';
-  data?: any;
-}
-
 export default function CreatorLabsSupportPage() {
   // Input mode: only ONE is allowed at a time ('phone' or 'email')
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
@@ -24,8 +16,8 @@ export default function CreatorLabsSupportPage() {
   const [flowData, setFlowData] = useState<SupportFlowResult | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
-  // Chat conversation state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  // Currently selected question in the chat (null | 1 | 2 | 3)
+  const [selectedQuestion, setSelectedQuestion] = useState<1 | 2 | 3 | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
 
   // Switch between phone or email
@@ -66,6 +58,7 @@ export default function CreatorLabsSupportPage() {
       if (res.ok && data.success && data.data) {
         setFlowData(data.data);
         setIsConfirmed(false);
+        setSelectedQuestion(null);
       } else {
         setErrorMsg(
           data.error || 'No paid registration found in the last 7 days.'
@@ -81,94 +74,8 @@ export default function CreatorLabsSupportPage() {
   };
 
   const handleConfirmOrder = () => {
-    if (!flowData) return;
     setIsConfirmed(true);
-
-    // Initialize the chat with the bot's greeting
-    setChatMessages([
-      {
-        id: 'msg-welcome',
-        sender: 'bot',
-        text: `Hi ${flowData.order.customerName || 'there'}! 👋 I have verified your order for ${flowData.order.creatorName}. How can I help you today?`,
-        type: 'text',
-      },
-    ]);
-  };
-
-  // Handle clicking one of the 3 chat questions
-  const handleSelectQuestion = (questionId: 1 | 2 | 3) => {
-    if (!flowData) return;
-
-    if (questionId === 1) {
-      // 1. I want zoom link for the workshop
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        sender: 'user',
-        text: 'I want zoom link for the workshop',
-      };
-
-      const botMsg: ChatMessage = flowData.zoomLink
-        ? {
-            id: `bot-${Date.now()}`,
-            sender: 'bot',
-            text: 'Here is your Zoom link for the workshop:',
-            type: 'zoom',
-            data: { zoomLink: flowData.zoomLink },
-          }
-        : {
-            id: `bot-${Date.now()}`,
-            sender: 'bot',
-            text: 'You will receive the Zoom link via WhatsApp one day before the webinar.',
-            type: 'text',
-          };
-
-      setChatMessages((prev) => [...prev, userMsg, botMsg]);
-    } else if (questionId === 2) {
-      // 2. I want whatsapp community link
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        sender: 'user',
-        text: 'I want whatsapp community link',
-      };
-
-      const botMsg: ChatMessage = flowData.whatsappCommunityLink
-        ? {
-            id: `bot-${Date.now()}`,
-            sender: 'bot',
-            text: `Here is the official WhatsApp Community link for ${flowData.order.creatorName}:`,
-            type: 'whatsapp',
-            data: { whatsappLink: flowData.whatsappCommunityLink },
-          }
-        : {
-            id: `bot-${Date.now()}`,
-            sender: 'bot',
-            text: 'The WhatsApp community link is currently being refreshed by the creator team. Please check back shortly.',
-            type: 'text',
-          };
-
-      setChatMessages((prev) => [...prev, userMsg, botMsg]);
-    } else if (questionId === 3) {
-      // 3. I purchased the course didn't receive the details
-      const userMsg: ChatMessage = {
-        id: `user-${Date.now()}`,
-        sender: 'user',
-        text: 'I purchased the course didn’t receive the details',
-      };
-
-      const botMsg: ChatMessage = {
-        id: `bot-${Date.now()}`,
-        sender: 'bot',
-        text: `For course access and curriculum details, please contact the creator team directly:`,
-        type: 'course_support',
-        data: {
-          creatorName: flowData.order.creatorName,
-          email: flowData.creatorSupportEmail,
-          phone: flowData.creatorSupportPhone,
-        },
-      };
-
-      setChatMessages((prev) => [...prev, userMsg, botMsg]);
-    }
+    setSelectedQuestion(null);
   };
 
   const copyToClipboard = (text: string, identifier: string) => {
@@ -180,7 +87,7 @@ export default function CreatorLabsSupportPage() {
   const handleReset = () => {
     setFlowData(null);
     setIsConfirmed(false);
-    setChatMessages([]);
+    setSelectedQuestion(null);
     setErrorMsg(null);
   };
 
@@ -205,14 +112,16 @@ export default function CreatorLabsSupportPage() {
   return (
     <div className="page-wrapper">
       <div className="center-container">
-        {/* Header */}
-        <header className="app-header">
-          <span className="brand-badge">Official Helpdesk</span>
-          <h1 className="header-title">Welcome to Creator Labs Support</h1>
-          <p className="header-subtitle">
-            Find and verify your workshop order details
-          </p>
-        </header>
+        {/* Only show top header on step 1 & 2 to avoid clutter in chat */}
+        {!isConfirmed && (
+          <header className="app-header">
+            <span className="brand-badge">Official Helpdesk</span>
+            <h1 className="header-title">Welcome to Creator Labs Support</h1>
+            <p className="header-subtitle">
+              Find and verify your workshop order details
+            </p>
+          </header>
+        )}
 
         <main className="support-card">
           {/* Step 1: Input Screen (Only Phone OR Email allowed) */}
@@ -370,158 +279,197 @@ export default function CreatorLabsSupportPage() {
             </div>
           )}
 
-          {/* Step 3: Interactive Chat Screen */}
+          {/* Step 3: Clean, Sleek Interactive Support Chat */}
           {order && isConfirmed && (
-            <div className="chat-window">
-              {/* Chat Top Bar */}
-              <div className="chat-top-bar">
+            <div className="chat-container">
+              {/* Header Bar */}
+              <div className="chat-header-bar">
                 <div className="chat-agent-info">
                   <div className="agent-avatar">🤖</div>
                   <div>
-                    <div className="agent-name">{order.creatorName} Assistant</div>
+                    <div className="agent-name">{order.creatorName} Support</div>
                     <div className="agent-status">
-                      <span className="agent-dot" /> Online • Support Bot
+                      <span className="agent-dot" /> Online Helpdesk
                     </div>
                   </div>
                 </div>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    background: '#f1f5f9',
-                    color: 'var(--text-secondary)',
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    fontWeight: 600,
-                  }}
-                >
-                  ₹{order.amountPaid} Paid
-                </span>
+                <span className="badge-paid">₹{order.amountPaid} Paid</span>
               </div>
 
-              {/* Chat Messages Stream */}
-              <div className="messages-stream">
-                {chatMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`msg-bubble ${
-                      msg.sender === 'user' ? 'msg-user' : 'msg-bot'
-                    }`}
-                  >
-                    <div>{msg.text}</div>
+              {/* Chat Conversation Flow */}
+              <div className="chat-flow">
+                {/* Initial Bot Greeting */}
+                <div className="chat-bubble chat-bubble-bot">
+                  Hi <strong>{order.customerName || 'there'}</strong>! 👋
+                  <br />
+                  I have verified your workshop order for <strong>{order.creatorName}</strong>.
+                  <br />
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.825rem', marginTop: '4px', display: 'block' }}>
+                    How can I help you today? Please tap an option below:
+                  </span>
+                </div>
 
-                    {/* Question 1: Zoom Link Response */}
-                    {msg.type === 'zoom' && msg.data?.zoomLink && (
-                      <div className="chat-action-card">
-                        <a
-                          href={msg.data.zoomLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-zoom"
-                        >
-                          Join Zoom Meeting
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(msg.data.zoomLink, 'zoom')}
-                          className="btn-copy"
-                        >
-                          {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
-                        </button>
-                      </div>
-                    )}
+                {/* When User Selects Question 1 */}
+                {selectedQuestion === 1 && (
+                  <>
+                    <div className="chat-bubble chat-bubble-user">
+                      I want zoom link for the workshop
+                    </div>
 
-                    {/* Question 2: WhatsApp Community Link Response */}
-                    {msg.type === 'whatsapp' && msg.data?.whatsappLink && (
-                      <div className="chat-action-card">
-                        <a
-                          href={msg.data.whatsappLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-whatsapp"
-                        >
-                          Join WhatsApp Community
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            copyToClipboard(msg.data.whatsappLink, 'wa')
-                          }
-                          className="btn-copy"
-                        >
-                          {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Community Link'}
-                        </button>
-                      </div>
-                    )}
+                    <div className="chat-bubble chat-bubble-bot">
+                      {flowData.zoomLink ? (
+                        <div>
+                          <span>Here is your Zoom link for the workshop:</span>
+                          <div className="resolution-box resolution-box-zoom">
+                            <a
+                              href={flowData.zoomLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-chat-zoom"
+                            >
+                              Join Zoom Meeting
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(flowData.zoomLink!, 'zoom')}
+                              className="btn-chat-copy"
+                            >
+                              {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          You will receive the Zoom link via WhatsApp one day before the webinar.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
 
-                    {/* Question 3: Course Support Details Response */}
-                    {msg.type === 'course_support' && msg.data && (
-                      <div className="contact-details-box">
-                        <div className="contact-row">
-                          <span className="contact-label">Email:</span>
+                {/* When User Selects Question 2 */}
+                {selectedQuestion === 2 && (
+                  <>
+                    <div className="chat-bubble chat-bubble-user">
+                      I want whatsapp community link
+                    </div>
+
+                    <div className="chat-bubble chat-bubble-bot">
+                      {flowData.whatsappCommunityLink ? (
+                        <div>
+                          <span>
+                            Here is the official WhatsApp Community link for <strong>{order.creatorName}</strong>:
+                          </span>
+                          <div className="resolution-box resolution-box-wa">
+                            <a
+                              href={flowData.whatsappCommunityLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-chat-wa"
+                            >
+                              Join WhatsApp Community
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                copyToClipboard(flowData.whatsappCommunityLink!, 'wa')
+                              }
+                              className="btn-chat-copy"
+                            >
+                              {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Community Link'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          The WhatsApp community link is currently being refreshed by the creator team. Please check back shortly.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* When User Selects Question 3 */}
+                {selectedQuestion === 3 && (
+                  <>
+                    <div className="chat-bubble chat-bubble-user">
+                      I purchased the course didn’t receive the details
+                    </div>
+
+                    <div className="chat-bubble chat-bubble-bot">
+                      <span>
+                        For course access and curriculum details, please contact the creator team directly:
+                      </span>
+                      <div className="resolution-box resolution-box-support">
+                        <div className="contact-item-row">
+                          <span className="contact-item-label">Email:</span>
                           <a
-                            href={`mailto:${msg.data.email}`}
-                            className="contact-link"
+                            href={`mailto:${flowData.creatorSupportEmail}`}
+                            className="contact-item-link"
                           >
-                            {msg.data.email}
+                            {flowData.creatorSupportEmail}
                           </a>
                         </div>
 
-                        <div className="contact-row">
-                          <span className="contact-label">Phone:</span>
+                        <div className="contact-item-row">
+                          <span className="contact-item-label">Phone:</span>
                           <a
-                            href={`tel:${msg.data.phone.replace(/[^\d+]/g, '')}`}
-                            className="contact-link"
+                            href={`tel:${flowData.creatorSupportPhone.replace(/[^\d+]/g, '')}`}
+                            className="contact-item-link"
                           >
-                            {msg.data.phone}
+                            {flowData.creatorSupportPhone}
                           </a>
                         </div>
 
-                        <div className="contact-note">
+                        <div className="contact-help-text">
                           Please contact on this number or email, and the team will assist you with your course access.
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Quick Questions Section */}
-              <div className="quick-questions-wrapper">
-                <span className="quick-questions-title">Choose an option</span>
+              {/* Tappable Question Options */}
+              <div className="chat-options-section">
+                <span className="chat-options-header">
+                  {selectedQuestion ? 'Ask another question' : 'Choose an option'}
+                </span>
 
                 <button
                   type="button"
-                  onClick={() => handleSelectQuestion(1)}
-                  className="question-chip"
+                  onClick={() => setSelectedQuestion(1)}
+                  className={`chat-option-btn ${selectedQuestion === 1 ? 'selected' : ''}`}
                 >
                   <span>1. I want zoom link for the workshop</span>
-                  <span className="chip-arrow">&rarr;</span>
+                  <span style={{ color: 'var(--text-muted)' }}>&rarr;</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleSelectQuestion(2)}
-                  className="question-chip"
+                  onClick={() => setSelectedQuestion(2)}
+                  className={`chat-option-btn ${selectedQuestion === 2 ? 'selected' : ''}`}
                 >
                   <span>2. I want whatsapp community link</span>
-                  <span className="chip-arrow">&rarr;</span>
+                  <span style={{ color: 'var(--text-muted)' }}>&rarr;</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => handleSelectQuestion(3)}
-                  className="question-chip"
+                  onClick={() => setSelectedQuestion(3)}
+                  className={`chat-option-btn ${selectedQuestion === 3 ? 'selected' : ''}`}
                 >
                   <span>3. I purchased the course didn’t receive the details</span>
-                  <span className="chip-arrow">&rarr;</span>
+                  <span style={{ color: 'var(--text-muted)' }}>&rarr;</span>
                 </button>
               </div>
 
+              {/* Start Over Button */}
               <button
                 type="button"
                 onClick={handleReset}
                 className="btn-ghost"
-                style={{ marginTop: '8px' }}
+                style={{ marginTop: '10px' }}
               >
                 Search Another Order
               </button>
