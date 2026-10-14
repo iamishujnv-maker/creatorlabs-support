@@ -3,8 +3,12 @@
 import React, { useState } from 'react';
 import { LatestPaidOrderResult } from '@/lib/mongodb';
 
-export default function WorkshopSupportPage() {
-  const [query, setQuery] = useState('');
+export default function CreatorLabsSupportPage() {
+  // Input mode: only ONE is allowed at a time ('phone' or 'email')
+  const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -12,18 +16,39 @@ export default function WorkshopSupportPage() {
   const [order, setOrder] = useState<LatestPaidOrderResult | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
+  // Switch between phone or email
+  const handleModeChange = (mode: 'phone' | 'email') => {
+    setInputMode(mode);
+    setErrorMsg(null);
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query || query.trim().length < 3) {
-      setErrorMsg('Please enter a valid 10-digit mobile number or email address.');
-      return;
+    setErrorMsg(null);
+
+    let queryValue = '';
+
+    if (inputMode === 'phone') {
+      const cleanDigits = phone.replace(/\D/g, '');
+      if (cleanDigits.length !== 10) {
+        setErrorMsg('Please enter a valid 10-digit mobile number.');
+        return;
+      }
+      queryValue = cleanDigits;
+    } else {
+      const trimmedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        setErrorMsg('Please enter a valid email address.');
+        return;
+      }
+      queryValue = trimmedEmail;
     }
 
     setLoading(true);
-    setErrorMsg(null);
 
     try {
-      const res = await fetch(`/api/lookup?query=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/lookup?query=${encodeURIComponent(queryValue)}`);
       const data = await res.json();
 
       if (res.ok && data.success && data.order) {
@@ -31,7 +56,7 @@ export default function WorkshopSupportPage() {
         setIsConfirmed(false);
       } else {
         setErrorMsg(
-          data.error || 'No paid registration found for this phone number or email.'
+          data.error || 'No paid registration found. Please check and try again.'
         );
         setOrder(null);
       }
@@ -66,167 +91,210 @@ export default function WorkshopSupportPage() {
   };
 
   return (
-    <div className="page-container">
-      <main className="app-card">
-        {/* Step 1: Input Screen (when no order is loaded) */}
+    <div className="page-wrapper">
+      {/* Sleek, simple header */}
+      <header className="app-header">
+        <span className="brand-badge">Official Helpdesk</span>
+        <h1 className="header-title">Welcome to Creator Labs Support</h1>
+        <p className="header-subtitle">
+          Find and verify your workshop order details
+        </p>
+      </header>
+
+      <main className="support-card">
+        {/* Step 1: Input Screen (Only Phone OR Email allowed) */}
         {!order && (
-          <>
-            <div className="card-header">
-              <h1 className="card-title">Workshop Support</h1>
-              <p className="card-subtitle">
-                Enter your registered phone number or email to view your workshop registration.
-              </p>
+          <form onSubmit={handleSearch}>
+            <div className="toggle-wrapper">
+              <span className="toggle-label">Search using</span>
+              <div className="tab-toggle" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'phone'}
+                  className={`tab-btn ${inputMode === 'phone' ? 'active' : ''}`}
+                  onClick={() => handleModeChange('phone')}
+                >
+                  Phone Number
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === 'email'}
+                  className={`tab-btn ${inputMode === 'email' ? 'active' : ''}`}
+                  onClick={() => handleModeChange('email')}
+                >
+                  Email Address
+                </button>
+              </div>
             </div>
 
-            <div className="card-body">
-              {errorMsg && <div className="alert-error">{errorMsg}</div>}
+            {errorMsg && (
+              <div className="alert-error" role="alert">
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-              <form onSubmit={handleSearch}>
-                <div className="form-group">
-                  <label htmlFor="user-input" className="form-label">
-                    Mobile Number or Email
-                  </label>
+            {inputMode === 'phone' ? (
+              <div className="form-group">
+                <label htmlFor="phone-input" className="input-label">
+                  Registered Mobile Number
+                </label>
+                <div className="phone-input-group">
+                  <span className="phone-prefix">+91</span>
                   <input
-                    id="user-input"
-                    type="text"
+                    id="phone-input"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     required
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="e.g. 9876543210 or yourname@gmail.com"
-                    className="form-input"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="9876543210"
+                    className="phone-input"
                     autoFocus
                   />
                 </div>
+              </div>
+            ) : (
+              <div className="form-group">
+                <label htmlFor="email-input" className="input-label">
+                  Registered Email Address
+                </label>
+                <input
+                  id="email-input"
+                  type="email"
+                  inputMode="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="input-field"
+                  autoFocus
+                />
+              </div>
+            )}
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn btn-primary"
-                >
-                  {loading ? 'Checking...' : 'Find My Registration'}
-                </button>
-              </form>
-            </div>
-          </>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+            >
+              {loading ? 'Finding Order...' : 'Continue'}
+            </button>
+          </form>
         )}
 
-        {/* Step 2: Order Found -> Show details and ask for Confirmation */}
+        {/* Step 2: Latest Paid Order Display & Confirmation */}
         {order && !isConfirmed && (
-          <>
-            <div className="card-header">
-              <h2 className="card-title">Confirm Your Order</h2>
-              <p className="card-subtitle">
-                Please check the details below and confirm if this is your registration.
-              </p>
-            </div>
+          <div>
+            <h2
+              style={{
+                fontSize: '1.15rem',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                marginBottom: '4px',
+              }}
+            >
+              Confirm Your Order
+            </h2>
+            <p
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '16px',
+              }}
+            >
+              Please verify your workshop registration details below.
+            </p>
 
-            <div className="card-body">
-              <div className="order-summary">
-                <div className="order-row">
-                  <span className="order-label">Creator Name</span>
-                  <span className="order-value">{order.creatorName}</span>
-                </div>
-
-                <div className="order-row">
-                  <span className="order-label">Domain</span>
-                  <span className="order-value">{order.domain}</span>
-                </div>
-
-                <div className="order-row">
-                  <span className="order-label">Registration Date</span>
-                  <span className="order-value">{formatDate(order.registrationDate)}</span>
-                </div>
-
-                <div className="order-row">
-                  <span className="order-label">Amount Paid</span>
-                  <span className="order-value amount-highlight">
-                    ₹{order.amountPaid}
-                  </span>
-                </div>
-
-                {order.customerName && (
-                  <div className="order-row">
-                    <span className="order-label">Registered Name</span>
-                    <span className="order-value">{order.customerName}</span>
-                  </div>
-                )}
+            <div className="order-card-box">
+              <div className="order-box-header">
+                <span className="order-box-title">Latest Paid Order</span>
+                <span className="order-tag">Paid</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setIsConfirmed(true)}
-                className="btn btn-success"
-              >
-                Yes, This Is My Order (Confirm)
-              </button>
+              <div className="order-item-row">
+                <span className="order-item-label">Creator Name</span>
+                <span className="order-item-value">{order.creatorName}</span>
+              </div>
 
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn btn-secondary"
-              >
-                Not My Order (Search Again)
-              </button>
+              <div className="order-item-row">
+                <span className="order-item-label">Domain</span>
+                <span className="order-item-value">{order.domain}</span>
+              </div>
+
+              <div className="order-item-row">
+                <span className="order-item-label">Registration Date</span>
+                <span className="order-item-value">
+                  {formatDate(order.registrationDate)}
+                </span>
+              </div>
+
+              <div className="order-item-row">
+                <span className="order-item-label">Amount Paid</span>
+                <span className="order-item-value amount-text">
+                  ₹{order.amountPaid}
+                </span>
+              </div>
             </div>
-          </>
+
+            <button
+              type="button"
+              onClick={() => setIsConfirmed(true)}
+              className="btn-confirm"
+            >
+              Yes, This Is My Order (Confirm)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn-ghost"
+            >
+              Not My Order (Search Again)
+            </button>
+          </div>
         )}
 
-        {/* Step 3: Confirmed State (Waiting for next prompt options) */}
+        {/* Step 3: Confirmed State */}
         {order && isConfirmed && (
-          <>
-            <div className="card-header">
-              <h2 className="card-title" style={{ color: '#16a34a' }}>
-                ✓ Order Confirmed
-              </h2>
-              <p className="card-subtitle">
-                Your order with <strong>{order.creatorName}</strong> has been verified.
-              </p>
+          <div>
+            <div className="alert-success">
+              <span>✓ Order Confirmed for {order.creatorName}</span>
             </div>
 
-            <div className="card-body">
-              <div className="alert-success">
-                Registration verified for <strong>{order.customerName || order.customerPhone}</strong>.
+            <div className="order-card-box">
+              <div className="order-item-row">
+                <span className="order-item-label">Creator</span>
+                <span className="order-item-value">{order.creatorName}</span>
               </div>
-
-              <div className="order-summary" style={{ marginBottom: '16px' }}>
-                <div className="order-row">
-                  <span className="order-label">Creator</span>
-                  <span className="order-value">{order.creatorName}</span>
-                </div>
-                <div className="order-row">
-                  <span className="order-label">Domain</span>
-                  <span className="order-value">{order.domain}</span>
-                </div>
-                <div className="order-row">
-                  <span className="order-label">Amount</span>
-                  <span className="order-value amount-highlight">₹{order.amountPaid}</span>
-                </div>
+              <div className="order-item-row">
+                <span className="order-item-label">Domain</span>
+                <span className="order-item-value">{order.domain}</span>
               </div>
-
-              {/* Ready for the options to be added in the next prompt */}
-              <div
-                style={{
-                  padding: '16px',
-                  background: '#f1f5f9',
-                  borderRadius: '8px',
-                  fontSize: '0.875rem',
-                  color: '#475569',
-                  textAlign: 'center',
-                }}
-              >
-                Support options will be displayed here in the next step.
+              <div className="order-item-row">
+                <span className="order-item-label">Amount</span>
+                <span className="order-item-value amount-text">
+                  ₹{order.amountPaid}
+                </span>
               </div>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn btn-secondary"
-                style={{ marginTop: '16px' }}
-              >
-                Search Another Number
-              </button>
             </div>
-          </>
+
+            {/* Placeholder where further support options will be added in next prompt */}
+            <div className="next-step-box">
+              Support options will appear here in the next step.
+            </div>
+
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn-ghost"
+              style={{ marginTop: '16px' }}
+            >
+              Search Another Order
+            </button>
+          </div>
         )}
       </main>
     </div>
