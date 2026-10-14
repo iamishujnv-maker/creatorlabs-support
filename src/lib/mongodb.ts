@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb';
 
-const uri = process.env.MONGODB_URI || 'mongodb+srv://workshop:LMp9GNFx5AuhoTNh@myfirstcluster.i579n.mongodb.net/test_workshops';
+const uri = process.env.MONGODB_URI || 'mongodb+srv://workshop:LMp9GNFx5AuhoTNh@myfirstcluster.i579n.mongodb.net/workshops';
 
 let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient>;
@@ -21,27 +21,42 @@ if (process.env.NODE_ENV === 'development') {
   clientPromise = client.connect();
 }
 
-export interface LatestPaidOrderResult {
-  orderId: string;
-  creatorName: string;
-  domain: string;
-  registrationDate: string;
-  amountPaid: number;
-  currency: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  workshopUrl?: string;
-  notes?: Record<string, any>;
+export interface SupportFlowResult {
+  order: {
+    orderId: string;
+    creatorName: string;
+    domain: string;
+    registrationDate: string;
+    amountPaid: number;
+    currency: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail: string;
+  };
+  whatsappCommunityLink: string | null;
+  zoomLink: string | null;
+  zoomSentAt: string | null;
 }
 
-export async function getLatestPaidOrder(input: string): Promise<LatestPaidOrderResult | null> {
+/**
+ * Executes the full support flow:
+ * 1. Takes user input (phone or email)
+ * 2. Fetches latest paid order within the last 7 days
+ * 3. Fetches WhatsApp community link from the 'constants' collection
+ * 4. Fetches Zoom link from the 'messages' collection filtered by phone & domain
+ */
+export async function getSupportOrderFlow(input: string): Promise<SupportFlowResult | null> {
   const connectedClient = await clientPromise;
-  const db = connectedClient.db('test_workshops');
+
+  const dbWorkshops = connectedClient.db('workshops');
+  const dbTest = connectedClient.db('test_workshops');
 
   const cleanPhone = input.replace(/\D/g, '');
   const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
   const trimmed = input.trim();
+
+  // Filter for last 7 days
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const conditions: any[] = [
     { customerEmail: { $regex: new RegExp(`^${trimmed}$`, 'i') } },
@@ -55,57 +70,131 @@ export async function getLatestPaidOrder(input: string): Promise<LatestPaidOrder
     );
   }
 
-  const query = {
+  const orderQuery = {
     status: 'paid',
     $or: conditions,
+    createdAt: { $gte: sevenDaysAgo },
   };
 
-  // Search in primary orders collection
-  let orders = await db
-    .collection('orders')
-    .find(query)
-    .sort({ createdAt: -1 })
-    .limit(1)
-    .toArray();
+  // 1. Fetch latest paid order in last 7 days (check both workshops and test_workshops)
+  const [ordersWorkshops, ordersTest] = await Promise.all([
+    dbWorkshops.collection('orders').find(orderQuery).sort({ createdAt: -1 }).limit(1).toArray(),
+    dbTest.collection('orders').find(orderQuery).sort({ createdAt: -1 }).limit(1).toArray(),
+  ]);
 
-  // If not found in orders, check legacy orders_till_dec2025
-  if (!orders || orders.length === 0) {
-    orders = await db
-      .collection('orders_till_dec2025')
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(1)
-      .toArray();
+  let order: any = null;
+
+  if (ordersWorkshops.length > 0 && ordersTest.length > 0) {
+    order =
+      new Date(ordersWorkshops[0].createdAt) >= new Date(ordersTest[0].createdAt)
+        ? ordersWorkshops[0]
+        : ordersTest[0];
+  } else if (ordersWorkshops.length > 0) {
+    order = ordersWorkshops[0];
+  } else if (ordersTest.length > 0) {
+    order = ordersTest[0];
   }
 
-  if (!orders || orders.length === 0) {
+  if (!order) {
     return null;
   }
 
-  const order = orders[0];
   const creatorName =
     order.notes?.creator_name ||
     order.notes?.brand_name ||
     order.notes?.domain ||
     'Creator';
 
-  const domain = order.domain || order.notes?.domain || 'N/A';
-  const registrationDate = order.createdAt ? new Date(order.createdAt).toISOString() : new Date().toISOString();
-  const amountPaid = order.amount ?? 0;
-  const currency = order.currency || 'INR';
+  const rawDomain = order.domain || order.notes?.domain || 'N/A';
+  const cleanDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+  const registrationDate = order.createdAt
+    ? new Date(order.createdAt).toISOString()
+    : new Date().toISOString();
+
+  // 2. Fetch WhatsApp Community link from constants table
+  let whatsappCommunityLink: string | null = null;
+
+  try {
+    const constantDoc = await dbWorkshops.collection('constants').findOne({
+      $or: [
+        { site: cleanDomain },
+        { site: { $regex: new RegExp(cleanDomain.replace(/\.dev\./, '.*'), 'i') } },
+        { site: { $regex: new RegExp(cleanDomain, 'i') } },
+      ],
+    });
+
+    if (constantDoc && constantDoc.constants) {
+      whatsappCommunityLink =
+        constantDoc.constants.PAYMENT_SUCCESS_REDIRECT ||
+        constantDoc.constants.CONSULTATION_WA_LINK ||
+        null;
+    }
+  } catch (err) {
+    console.warn('Error reading constants table:', err);
+  }
+
+  // Fallback to order notes if constants didn't have link
+  if (!whatsappCommunityLink) {
+    whatsappCommunityLink = order.notes?.whatsapp_url || order.workshopUrl || null;
+  }
+
+  // 3. Fetch Zoom link from messages table (matching attendee phone and domain)
+  const phoneToSearch = order.customerPhone || order.notes?.customer_phone || input;
+  const searchDigits = phoneToSearch.replace(/\D/g, '').slice(-10);
+
+  let zoomLink: string | null = null;
+  let zoomSentAt: string | null = null;
+
+  if (searchDigits.length >= 7) {
+    const msgFilter = {
+      phoneNumber: { $regex: new RegExp(`${searchDigits}$`) },
+    };
+
+    // Search in test_workshops and workshops
+    for (const db of [dbTest, dbWorkshops]) {
+      try {
+        const msgs = await db
+          .collection('messages')
+          .find(msgFilter)
+          .sort({ createdAt: -1 })
+          .toArray();
+
+        for (const m of msgs) {
+          const vars = m.variables || {};
+          for (const key of Object.keys(vars)) {
+            const val = String(vars[key]);
+            const match = val.match(/https?:\/\/[^\s]*zoom\.us[^\s]*/i);
+            if (match) {
+              zoomLink = match[0].trim();
+              zoomSentAt = m.createdAt ? new Date(m.createdAt).toISOString() : null;
+              break;
+            }
+          }
+          if (zoomLink) break;
+        }
+        if (zoomLink) break;
+      } catch (err) {
+        console.warn('Error querying messages table:', err);
+      }
+    }
+  }
 
   return {
-    orderId: order.orderId || order._id.toString(),
-    creatorName,
-    domain,
-    registrationDate,
-    amountPaid,
-    currency,
-    customerName: order.customerName || order.notes?.customer_name || 'Customer',
-    customerPhone: order.customerPhone || order.notes?.customer_phone || '',
-    customerEmail: order.customerEmail || order.notes?.customer_email || '',
-    workshopUrl: order.workshopUrl || order.notes?.whatsapp_url || '',
-    notes: order.notes,
+    order: {
+      orderId: order.orderId || order._id.toString(),
+      creatorName,
+      domain: rawDomain,
+      registrationDate,
+      amountPaid: order.amount ?? 0,
+      currency: order.currency || 'INR',
+      customerName: order.customerName || order.notes?.customer_name || 'Customer',
+      customerPhone: order.customerPhone || order.notes?.customer_phone || '',
+      customerEmail: order.customerEmail || order.notes?.customer_email || '',
+    },
+    whatsappCommunityLink,
+    zoomLink,
+    zoomSentAt,
   };
 }
 

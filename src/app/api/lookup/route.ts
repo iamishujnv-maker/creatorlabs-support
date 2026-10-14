@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getLatestPaidOrder } from '@/lib/mongodb';
+import { getSupportOrderFlow } from '@/lib/mongodb';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const order = await getLatestPaidOrder(query);
+    const flowData = await getSupportOrderFlow(query);
 
-    if (!order) {
+    if (!flowData) {
       return NextResponse.json(
         {
           success: false,
-          error: 'No paid registration found with this phone number or email. Please check and try again.',
+          error: 'No paid registration found in the last 7 days for this phone number or email. Please check your details or contact support.',
         },
         { status: 404 }
       );
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      order,
+      data: flowData,
     });
   } catch (error) {
     console.error('Lookup API error:', error);

@@ -16,6 +16,10 @@
   --danger: #dc2626;
   --danger-bg: #fef2f2;
   --danger-border: #fecaca;
+  --whatsapp: #25d366;
+  --whatsapp-hover: #1ea952;
+  --zoom: #2d8cff;
+  --zoom-hover: #1b73e8;
   --radius-sm: 8px;
   --radius: 12px;
   --radius-lg: 16px;
@@ -273,6 +277,72 @@ body {
   background: #15803d;
 }
 
+.btn-whatsapp {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background: #16a34a;
+  border: none;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-whatsapp:hover {
+  background: #15803d;
+}
+
+.btn-zoom {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: #ffffff;
+  background: var(--zoom);
+  border: none;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-zoom:hover {
+  background: var(--zoom-hover);
+}
+
+.btn-copy {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 0.825rem;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.btn-copy:hover {
+  background: #f8fafc;
+  color: var(--text-primary);
+}
+
 .btn-ghost {
   width: 100%;
   padding: 12px 16px;
@@ -383,16 +453,70 @@ body {
   font-size: 1rem;
 }
 
-/* Next prompt placeholder */
-.next-step-box {
-  background: #f1f5f9;
-  border: 1px dashed var(--border);
+/* Resource Action Cards (WhatsApp & Zoom) */
+.resource-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.resource-card {
+  background: #ffffff;
+  border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 20px 16px;
-  text-align: center;
+  padding: 16px;
+}
+
+.resource-card-wa {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.resource-card-zoom {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.resource-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.resource-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.resource-desc {
+  font-size: 0.825rem;
   color: var(--text-secondary);
-  font-size: 0.875rem;
-  margin-top: 14px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.resource-status-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.resource-notice {
+  font-size: 0.825rem;
+  color: #64748b;
+  background: #ffffff;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--border);
+  line-height: 1.4;
 }
 
 /* Subtle, clean bottom brand */

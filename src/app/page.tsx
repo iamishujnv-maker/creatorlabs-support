@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { LatestPaidOrderResult } from '@/lib/mongodb';
+import { SupportFlowResult } from '@/lib/mongodb';
 
 export default function CreatorLabsSupportPage() {
   // Input mode: only ONE is allowed at a time ('phone' or 'email')
@@ -13,8 +13,11 @@ export default function CreatorLabsSupportPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Flow states: 'input' -> 'found' -> 'confirmed'
-  const [order, setOrder] = useState<LatestPaidOrderResult | null>(null);
+  const [flowData, setFlowData] = useState<SupportFlowResult | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
+
+  // Copy feedback states
+  const [copiedType, setCopiedType] = useState<'wa' | 'zoom' | null>(null);
 
   // Switch between phone or email
   const handleModeChange = (mode: 'phone' | 'email') => {
@@ -51,27 +54,33 @@ export default function CreatorLabsSupportPage() {
       const res = await fetch(`/api/lookup?query=${encodeURIComponent(queryValue)}`);
       const data = await res.json();
 
-      if (res.ok && data.success && data.order) {
-        setOrder(data.order);
+      if (res.ok && data.success && data.data) {
+        setFlowData(data.data);
         setIsConfirmed(false);
       } else {
         setErrorMsg(
-          data.error || 'No paid registration found. Please check and try again.'
+          data.error || 'No paid registration found in the last 7 days.'
         );
-        setOrder(null);
+        setFlowData(null);
       }
     } catch {
       setErrorMsg('Network error. Please check your connection and try again.');
-      setOrder(null);
+      setFlowData(null);
     } finally {
       setLoading(false);
     }
   };
 
   const handleReset = () => {
-    setOrder(null);
+    setFlowData(null);
     setIsConfirmed(false);
     setErrorMsg(null);
+  };
+
+  const copyToClipboard = (text: string, type: 'wa' | 'zoom') => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(type);
+    setTimeout(() => setCopiedType(null), 2500);
   };
 
   const formatDate = (dateStr: string) => {
@@ -90,6 +99,8 @@ export default function CreatorLabsSupportPage() {
     }
   };
 
+  const order = flowData?.order;
+
   return (
     <div className="page-wrapper">
       <div className="center-container">
@@ -104,7 +115,7 @@ export default function CreatorLabsSupportPage() {
 
         <main className="support-card">
           {/* Step 1: Input Screen (Only Phone OR Email allowed) */}
-          {!order && (
+          {!flowData && (
             <form onSubmit={handleSearch}>
               <div className="toggle-wrapper">
                 <span className="toggle-label">Search using</span>
@@ -186,7 +197,7 @@ export default function CreatorLabsSupportPage() {
             </form>
           )}
 
-          {/* Step 2: Latest Paid Order Display & Confirmation */}
+          {/* Step 2: Latest Paid Order Display & Confirmation (Order in last 7 days) */}
           {order && !isConfirmed && (
             <div>
               <h2
@@ -206,12 +217,12 @@ export default function CreatorLabsSupportPage() {
                   marginBottom: '16px',
                 }}
               >
-                Please verify your workshop registration details below.
+                We found your latest registration in the last 7 days.
               </p>
 
               <div className="order-card-box">
                 <div className="order-box-header">
-                  <span className="order-box-title">Latest Paid Order</span>
+                  <span className="order-box-title">Order Details</span>
                   <span className="order-tag">Paid</span>
                 </div>
 
@@ -258,40 +269,103 @@ export default function CreatorLabsSupportPage() {
             </div>
           )}
 
-          {/* Step 3: Confirmed State */}
+          {/* Step 3 & 4: Confirmed State -> Show WhatsApp Community & Zoom Links */}
           {order && isConfirmed && (
             <div>
               <div className="alert-success">
-                <span>✓ Order Confirmed for {order.creatorName}</span>
+                <span>✓ Order Verified for {order.creatorName}</span>
               </div>
 
-              <div className="order-card-box">
-                <div className="order-item-row">
-                  <span className="order-item-label">Creator</span>
-                  <span className="order-item-value">{order.creatorName}</span>
-                </div>
-                <div className="order-item-row">
-                  <span className="order-item-label">Domain</span>
-                  <span className="order-item-value">{order.domain}</span>
-                </div>
-                <div className="order-item-row">
-                  <span className="order-item-label">Amount</span>
-                  <span className="order-item-value amount-text">
-                    ₹{order.amountPaid}
-                  </span>
-                </div>
-              </div>
+              <div className="resource-cards-list">
+                {/* 3. WhatsApp Community Link (from constants table) */}
+                <div className="resource-card resource-card-wa">
+                  <div className="resource-header">
+                    <span className="resource-title" style={{ color: '#16a34a' }}>
+                      💬 WhatsApp Community
+                    </span>
+                    <span className="resource-status-badge" style={{ color: '#16a34a' }}>
+                      {flowData.whatsappCommunityLink ? 'Link Available' : 'Pending'}
+                    </span>
+                  </div>
+                  <p className="resource-desc">
+                    Join the official attendee group to get workshop materials, worksheets, and live announcements.
+                  </p>
 
-              {/* Placeholder where further support options will be added in next prompt */}
-              <div className="next-step-box">
-                Support options will appear here in the next step.
+                  {flowData.whatsappCommunityLink ? (
+                    <div>
+                      <a
+                        href={flowData.whatsappCommunityLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-whatsapp"
+                      >
+                        Join WhatsApp Community
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          copyToClipboard(flowData.whatsappCommunityLink!, 'wa')
+                        }
+                        className="btn-copy"
+                      >
+                        {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Group Link'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="resource-notice">
+                      Community link is being refreshed by the creator team. Please check back shortly.
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Zoom Link (from messages table filtered by phone & domain) */}
+                <div className="resource-card resource-card-zoom">
+                  <div className="resource-header">
+                    <span className="resource-title" style={{ color: '#2563eb' }}>
+                      🎥 Zoom Webinar Room
+                    </span>
+                    <span className="resource-status-badge" style={{ color: '#2563eb' }}>
+                      {flowData.zoomLink ? 'Ready to Join' : 'Broadcast Pending'}
+                    </span>
+                  </div>
+
+                  {flowData.zoomLink ? (
+                    <div>
+                      <p className="resource-desc">
+                        Here is your live session join link.
+                      </p>
+
+                      <a
+                        href={flowData.zoomLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn-zoom"
+                      >
+                        Join Zoom Meeting
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(flowData.zoomLink!, 'zoom')}
+                        className="btn-copy"
+                      >
+                        {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="resource-notice">
+                      The Zoom link has not been sent yet. The creator broadcasts the Zoom room via WhatsApp & SMS a few hours before the live session starts.
+                    </div>
+                  )}
+                </div>
               </div>
 
               <button
                 type="button"
                 onClick={handleReset}
                 className="btn-ghost"
-                style={{ marginTop: '16px' }}
+                style={{ marginTop: '14px' }}
               >
                 Search Another Order
               </button>
