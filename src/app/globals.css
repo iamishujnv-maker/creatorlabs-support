@@ -11,8 +11,7 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --success: #16a34a;
-  --success-bg: #f0fdf4;
-  --success-border: #bbf7d0;
+  --success-hover: #15803d;
   --danger: #dc2626;
   --danger-bg: #fef2f2;
   --danger-border: #fecaca;
@@ -67,20 +66,6 @@ body {
   margin-bottom: 20px;
 }
 
-.brand-badge {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--primary);
-  background: #eff6ff;
-  border: 1px solid #dbeafe;
-  padding: 3px 10px;
-  border-radius: 9999px;
-  margin-bottom: 6px;
-}
-
 .header-title {
   font-size: 1.45rem;
   font-weight: 700;
@@ -101,7 +86,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  padding: 22px;
+  padding: 24px;
 }
 
 /* Segmented Toggle */
@@ -225,7 +210,7 @@ body {
   color: var(--text-muted);
 }
 
-/* Primary Action Buttons */
+/* Buttons */
 .btn-primary {
   width: 100%;
   padding: 14px 18px;
@@ -253,28 +238,6 @@ body {
   cursor: not-allowed;
 }
 
-.btn-confirm {
-  width: 100%;
-  padding: 14px 18px;
-  font-size: 1rem;
-  font-weight: 600;
-  font-family: inherit;
-  color: #ffffff;
-  background: var(--success);
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.btn-confirm:hover {
-  background: #15803d;
-}
-
 .btn-ghost {
   width: 100%;
   padding: 11px 16px;
@@ -286,7 +249,7 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  margin-top: 10px;
+  margin-top: 14px;
   transition: all 0.15s ease;
 }
 
@@ -305,112 +268,53 @@ body {
   margin-bottom: 18px;
 }
 
-/* Order Summary Box */
-.order-card-box {
-  background: #f8fafc;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 18px;
-}
-
-.order-box-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.order-box-title {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.order-tag {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--success);
-  background: var(--success-bg);
-  padding: 2px 8px;
-  border-radius: 9999px;
-  border: 1px solid var(--success-border);
-}
-
-.order-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 7px 0;
-  font-size: 0.875rem;
-}
-
-.order-item-label {
-  color: var(--text-secondary);
-  font-weight: 500;
-  width: 42%;
-}
-
-.order-item-value {
-  color: var(--text-primary);
-  font-weight: 600;
-  width: 58%;
-  text-align: right;
-  word-break: break-word;
-}
-
-.amount-text {
-  color: var(--success);
-  font-weight: 700;
-  font-size: 0.95rem;
-}
-
 /* ========================================================
-   QUESTION LIST MENU & SOLUTION SCREEN STYLES
+   SINGLE-SCREEN SIMPLE STRUCTURE (NO EXTRA BLOCKS)
    ======================================================== */
-.support-nav-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border);
+.registration-info-top {
+  margin-bottom: 20px;
 }
 
-.back-btn {
-  background: transparent;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+.reg-thankyou-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-bottom: 4px;
 }
 
-.back-btn:hover {
-  text-decoration: underline;
+.reg-meta-sub {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.divider-line {
+  height: 1px;
+  background-color: var(--border);
+  margin: 18px 0;
+}
+
+.questions-section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 14px;
 }
 
 /* Question List */
-.questions-list {
+.clean-questions-list {
   display: flex;
   flex-direction: column;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   background: #ffffff;
   overflow: hidden;
-  margin-top: 14px;
 }
 
-.question-item-btn {
+.clean-question-btn {
   width: 100%;
   text-align: left;
-  padding: 16px 18px;
+  padding: 15px 16px;
   background: #ffffff;
   border: none;
   border-bottom: 1px solid var(--border);
@@ -426,57 +330,72 @@ body {
   transition: background-color 0.15s ease;
 }
 
-.question-item-btn:last-child {
+.clean-question-btn:last-child {
   border-bottom: none;
 }
 
-.question-item-btn:hover {
+.clean-question-btn:hover {
   background: #f8fafc;
 }
 
-.question-item-btn:active {
+.clean-question-btn:active {
   background: #f1f5f9;
 }
 
-.question-arrow {
+.arrow-icon {
   color: var(--text-muted);
   font-size: 1.1rem;
   font-weight: 600;
   flex-shrink: 0;
 }
 
-/* Solution View Card */
-.solution-view {
+/* ========================================================
+   SOLUTION VIEW
+   ======================================================== */
+.solution-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-.solution-header {
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
+.solution-back-btn {
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 0;
 }
 
-.solution-title {
+.solution-back-btn:hover {
+  text-decoration: underline;
+}
+
+.solution-heading {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
 
-.solution-desc {
-  font-size: 0.875rem;
+.solution-subline {
+  font-size: 0.85rem;
   color: var(--text-secondary);
+  margin-bottom: 18px;
 }
 
-.solution-card-body {
+.solution-body-card {
   background: #f8fafc;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 18px;
 }
 
-.solution-btn-wa {
+.solution-action-btn-wa {
   width: 100%;
   padding: 13px 18px;
   font-size: 0.95rem;
@@ -495,11 +414,11 @@ body {
   transition: background-color 0.15s ease;
 }
 
-.solution-btn-wa:hover {
+.solution-action-btn-wa:hover {
   background: var(--whatsapp-hover);
 }
 
-.solution-btn-zoom {
+.solution-action-btn-zoom {
   width: 100%;
   padding: 13px 18px;
   font-size: 0.95rem;
@@ -518,16 +437,16 @@ body {
   transition: background-color 0.15s ease;
 }
 
-.solution-btn-zoom:hover {
+.solution-action-btn-zoom:hover {
   background: var(--zoom-hover);
 }
 
-.solution-btn-copy {
+.copy-button {
   width: 100%;
-  background: transparent;
+  background: #ffffff;
   border: 1.5px solid var(--border);
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 600;
   font-family: inherit;
   padding: 10px 16px;
@@ -540,12 +459,12 @@ body {
   margin-top: 10px;
 }
 
-.solution-btn-copy:hover {
-  background: #ffffff;
+.copy-button:hover {
+  background: #f8fafc;
   color: var(--text-primary);
 }
 
-.solution-notice {
+.solution-message-box {
   background: #ffffff;
   border: 1px solid var(--border);
   padding: 14px 16px;
@@ -555,39 +474,39 @@ body {
   line-height: 1.45;
 }
 
-/* Contact Info Card for Question 3 */
-.solution-contact-card {
+/* Contact rows */
+.contacts-wrapper {
   background: #ffffff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.contact-row {
+.contact-row-item {
   display: flex;
   align-items: center;
   gap: 10px;
   font-size: 0.9rem;
 }
 
-.contact-label {
+.contact-item-key {
   font-weight: 600;
   color: var(--text-secondary);
-  min-width: 60px;
+  min-width: 55px;
 }
 
-.contact-value-link {
+.contact-item-val {
   color: var(--primary);
   font-weight: 600;
   text-decoration: underline;
   word-break: break-all;
 }
 
-.contact-instruction {
-  font-size: 0.85rem;
+.contact-help-note {
+  font-size: 0.825rem;
   color: var(--text-secondary);
   padding-top: 10px;
   border-top: 1px solid #f1f5f9;

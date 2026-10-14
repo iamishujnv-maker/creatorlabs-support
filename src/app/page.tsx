@@ -12,16 +12,9 @@ export default function CreatorLabsSupportPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Flow states:
-  // 1. '!flowData' -> Input Screen
-  // 2. 'flowData && !isConfirmed' -> Order Confirmation Screen
-  // 3. 'isConfirmed && !selectedQuestion' -> Questions List Screen
-  // 4. 'isConfirmed && selectedQuestion' -> Solution Screen
+  // Data state & active question
   const [flowData, setFlowData] = useState<SupportFlowResult | null>(null);
-  const [isConfirmed, setIsConfirmed] = useState(false);
-  const [selectedQuestion, setSelectedQuestion] = useState<1 | 2 | 3 | null>(null);
-
-  // Copy feedback state
+  const [activeQuestion, setActiveQuestion] = useState<1 | 2 | 3 | null>(null);
   const [copiedType, setCopiedType] = useState<string | null>(null);
 
   const handleModeChange = (mode: 'phone' | 'email') => {
@@ -60,8 +53,7 @@ export default function CreatorLabsSupportPage() {
 
       if (res.ok && data.success && data.data) {
         setFlowData(data.data);
-        setIsConfirmed(false);
-        setSelectedQuestion(null);
+        setActiveQuestion(null);
       } else {
         setErrorMsg(
           data.error || 'No paid registration found in the last 7 days.'
@@ -76,11 +68,6 @@ export default function CreatorLabsSupportPage() {
     }
   };
 
-  const handleConfirmOrder = () => {
-    setIsConfirmed(true);
-    setSelectedQuestion(null);
-  };
-
   const copyToClipboard = (text: string, identifier: string) => {
     navigator.clipboard.writeText(text);
     setCopiedType(identifier);
@@ -89,8 +76,7 @@ export default function CreatorLabsSupportPage() {
 
   const handleReset = () => {
     setFlowData(null);
-    setIsConfirmed(false);
-    setSelectedQuestion(null);
+    setActiveQuestion(null);
     setErrorMsg(null);
   };
 
@@ -101,9 +87,6 @@ export default function CreatorLabsSupportPage() {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
       });
     } catch {
       return dateStr;
@@ -115,278 +98,179 @@ export default function CreatorLabsSupportPage() {
   return (
     <div className="page-wrapper">
       <div className="center-container">
-        {/* Top Header shown on screens 1, 2, and 3 */}
-        {!selectedQuestion && (
-          <header className="app-header">
-            <span className="brand-badge">Official Helpdesk</span>
-            <h1 className="header-title">Welcome to Creator Labs Support</h1>
-            <p className="header-subtitle">
-              {isConfirmed && order
-                ? `Support for ${order.creatorName}`
-                : 'Find and verify your workshop order details'}
-            </p>
-          </header>
-        )}
-
+        {/* Main Card */}
         <main className="support-card">
           {/* SCREEN 1: Input (Phone OR Email) */}
           {!flowData && (
-            <form onSubmit={handleSearch}>
-              <div className="toggle-wrapper">
-                <span className="toggle-label">Search using</span>
-                <div className="tab-toggle" role="tablist">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={inputMode === 'phone'}
-                    className={`tab-btn ${inputMode === 'phone' ? 'active' : ''}`}
-                    onClick={() => handleModeChange('phone')}
-                  >
-                    Phone Number
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={inputMode === 'email'}
-                    className={`tab-btn ${inputMode === 'email' ? 'active' : ''}`}
-                    onClick={() => handleModeChange('email')}
-                  >
-                    Email Address
-                  </button>
-                </div>
-              </div>
+            <>
+              <header className="app-header">
+                <h1 className="header-title">Welcome to Creator Labs Support</h1>
+                <p className="header-subtitle">
+                  Enter your registered phone number or email
+                </p>
+              </header>
 
-              {errorMsg && (
-                <div className="alert-error" role="alert">
-                  <span>{errorMsg}</span>
+              <form onSubmit={handleSearch}>
+                <div className="toggle-wrapper">
+                  <span className="toggle-label">Search using</span>
+                  <div className="tab-toggle" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={inputMode === 'phone'}
+                      className={`tab-btn ${inputMode === 'phone' ? 'active' : ''}`}
+                      onClick={() => handleModeChange('phone')}
+                    >
+                      Phone Number
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={inputMode === 'email'}
+                      className={`tab-btn ${inputMode === 'email' ? 'active' : ''}`}
+                      onClick={() => handleModeChange('email')}
+                    >
+                      Email Address
+                    </button>
+                  </div>
                 </div>
-              )}
 
-              {inputMode === 'phone' ? (
-                <div className="form-group">
-                  <label htmlFor="phone-input" className="input-label">
-                    Registered Mobile Number
-                  </label>
-                  <div className="phone-input-group">
-                    <span className="phone-prefix">+91</span>
+                {errorMsg && (
+                  <div className="alert-error" role="alert">
+                    <span>{errorMsg}</span>
+                  </div>
+                )}
+
+                {inputMode === 'phone' ? (
+                  <div className="form-group">
+                    <label htmlFor="phone-input" className="input-label">
+                      Registered Mobile Number
+                    </label>
+                    <div className="phone-input-group">
+                      <span className="phone-prefix">+91</span>
+                      <input
+                        id="phone-input"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        required
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                        placeholder="9876543210"
+                        className="phone-input"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label htmlFor="email-input" className="input-label">
+                      Registered Email Address
+                    </label>
                     <input
-                      id="phone-input"
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={10}
+                      id="email-input"
+                      type="email"
+                      inputMode="email"
                       required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                      placeholder="9876543210"
-                      className="phone-input"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="input-field"
                       autoFocus
                     />
                   </div>
-                </div>
-              ) : (
-                <div className="form-group">
-                  <label htmlFor="email-input" className="input-label">
-                    Registered Email Address
-                  </label>
-                  <input
-                    id="email-input"
-                    type="email"
-                    inputMode="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="input-field"
-                    autoFocus
-                  />
-                </div>
-              )}
+                )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary"
-              >
-                {loading ? 'Finding Order...' : 'Continue'}
-              </button>
-            </form>
-          )}
-
-          {/* SCREEN 2: Order Found -> Confirmation */}
-          {order && !isConfirmed && (
-            <div>
-              <h2
-                style={{
-                  fontSize: '1.15rem',
-                  fontWeight: 700,
-                  color: 'var(--text-primary)',
-                  marginBottom: '4px',
-                }}
-              >
-                Confirm Your Order
-              </h2>
-              <p
-                style={{
-                  fontSize: '0.875rem',
-                  color: 'var(--text-secondary)',
-                  marginBottom: '16px',
-                }}
-              >
-                We found your latest registration in the last 7 days.
-              </p>
-
-              <div className="order-card-box">
-                <div className="order-box-header">
-                  <span className="order-box-title">Order Details</span>
-                  <span className="order-tag">Paid</span>
-                </div>
-
-                <div className="order-item-row">
-                  <span className="order-item-label">Creator Name</span>
-                  <span className="order-item-value">{order.creatorName}</span>
-                </div>
-
-                <div className="order-item-row">
-                  <span className="order-item-label">Domain</span>
-                  <span className="order-item-value">{order.domain}</span>
-                </div>
-
-                <div className="order-item-row">
-                  <span className="order-item-label">Registration Date</span>
-                  <span className="order-item-value">
-                    {formatDate(order.registrationDate)}
-                  </span>
-                </div>
-
-                <div className="order-item-row">
-                  <span className="order-item-label">Amount Paid</span>
-                  <span className="order-item-value amount-text">
-                    ₹{order.amountPaid}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleConfirmOrder}
-                className="btn-confirm"
-              >
-                Yes, This Is My Order (Confirm)
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReset}
-                className="btn-ghost"
-              >
-                Not My Order (Search Again)
-              </button>
-            </div>
-          )}
-
-          {/* SCREEN 3: List of Questions with Arrow (Non-conversational) */}
-          {order && isConfirmed && !selectedQuestion && (
-            <div>
-              <div style={{ marginBottom: '12px' }}>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    color: '#16a34a',
-                    background: '#f0fdf4',
-                    border: '1px solid #bbf7d0',
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    display: 'inline-block',
-                    marginBottom: '6px',
-                  }}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="btn-primary"
                 >
-                  ✓ Order Verified
-                </span>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  How can we help you?
+                  {loading ? 'Finding Order...' : 'Continue'}
+                </button>
+              </form>
+            </>
+          )}
+
+          {/* SCREEN 2: Unified Single Support Screen (No extra blocks, clean structure) */}
+          {order && !activeQuestion && (
+            <div>
+              {/* Top: Thank you note with creator name, domain, and date and nothing else */}
+              <div className="registration-info-top">
+                <h2 className="reg-thankyou-title">
+                  Thank you for registering with {order.creatorName}
                 </h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  Select an issue below to get the solution.
+                <p className="reg-meta-sub">
+                  {order.domain} • {formatDate(order.registrationDate)}
                 </p>
               </div>
 
-              {/* Tappable Question List with Right Chevron Arrow */}
-              <div className="questions-list">
+              <div className="divider-line" />
+
+              {/* Heading: What do you need help with? */}
+              <h3 className="questions-section-title">
+                What do you need help with?
+              </h3>
+
+              {/* Questions List */}
+              <div className="clean-questions-list">
                 <button
                   type="button"
-                  onClick={() => setSelectedQuestion(1)}
-                  className="question-item-btn"
+                  onClick={() => setActiveQuestion(1)}
+                  className="clean-question-btn"
                 >
                   <span>1. I want zoom link for the workshop</span>
-                  <span className="question-arrow">&rarr;</span>
+                  <span className="arrow-icon">&rarr;</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setSelectedQuestion(2)}
-                  className="question-item-btn"
+                  onClick={() => setActiveQuestion(2)}
+                  className="clean-question-btn"
                 >
                   <span>2. I want whatsapp community link</span>
-                  <span className="question-arrow">&rarr;</span>
+                  <span className="arrow-icon">&rarr;</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setSelectedQuestion(3)}
-                  className="question-item-btn"
+                  onClick={() => setActiveQuestion(3)}
+                  className="clean-question-btn"
                 >
                   <span>3. I purchased the course didn’t receive the details</span>
-                  <span className="question-arrow">&rarr;</span>
+                  <span className="arrow-icon">&rarr;</span>
                 </button>
               </div>
 
+              {/* Bottom switch number link */}
               <button
                 type="button"
                 onClick={handleReset}
                 className="btn-ghost"
-                style={{ marginTop: '16px' }}
               >
-                Search Another Order
+                Search Another Number / Email
               </button>
             </div>
           )}
 
-          {/* SCREEN 4: Dedicated Solution Screen for the Selected Question */}
-          {order && isConfirmed && selectedQuestion && (
-            <div className="solution-view">
-              {/* Back to questions bar */}
-              <div className="support-nav-bar">
-                <button
-                  type="button"
-                  onClick={() => setSelectedQuestion(null)}
-                  className="back-btn"
-                >
-                  &larr; Back to Questions
-                </button>
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    background: '#f1f5f9',
-                    color: 'var(--text-secondary)',
-                    padding: '3px 8px',
-                    borderRadius: '9999px',
-                    fontWeight: 600,
-                  }}
-                >
-                  {order.creatorName}
-                </span>
-              </div>
+          {/* DEDICATED SOLUTION SCREEN FOR SELECTED QUESTION */}
+          {order && activeQuestion && (
+            <div className="solution-container">
+              <button
+                type="button"
+                onClick={() => setActiveQuestion(null)}
+                className="solution-back-btn"
+              >
+                &larr; Back to Questions
+              </button>
 
-              {/* SOLUTION FOR QUESTION 1: ZOOM LINK */}
-              {selectedQuestion === 1 && (
+              {/* Question 1: Zoom Link */}
+              {activeQuestion === 1 && (
                 <div>
-                  <div className="solution-header">
-                    <h2 className="solution-title">Zoom Link for Workshop</h2>
-                    <p className="solution-desc">Live session meeting room link</p>
-                  </div>
+                  <h3 className="solution-heading">Zoom Link for Workshop</h3>
+                  <p className="solution-subline">{order.creatorName}</p>
 
-                  <div className="solution-card-body" style={{ marginTop: '14px' }}>
+                  <div className="solution-body-card">
                     {flowData.zoomLink ? (
                       <div>
                         <p style={{ fontSize: '0.9rem', marginBottom: '14px', color: 'var(--text-primary)' }}>
@@ -397,7 +281,7 @@ export default function CreatorLabsSupportPage() {
                           href={flowData.zoomLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="solution-btn-zoom"
+                          className="solution-action-btn-zoom"
                         >
                           Join Zoom Meeting
                         </a>
@@ -405,13 +289,13 @@ export default function CreatorLabsSupportPage() {
                         <button
                           type="button"
                           onClick={() => copyToClipboard(flowData.zoomLink!, 'zoom')}
-                          className="solution-btn-copy"
+                          className="copy-button"
                         >
                           {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
                         </button>
                       </div>
                     ) : (
-                      <div className="solution-notice">
+                      <div className="solution-message-box">
                         You will receive the Zoom link via WhatsApp one day before the webinar.
                       </div>
                     )}
@@ -419,26 +303,24 @@ export default function CreatorLabsSupportPage() {
                 </div>
               )}
 
-              {/* SOLUTION FOR QUESTION 2: WHATSAPP COMMUNITY LINK */}
-              {selectedQuestion === 2 && (
+              {/* Question 2: WhatsApp Community */}
+              {activeQuestion === 2 && (
                 <div>
-                  <div className="solution-header">
-                    <h2 className="solution-title">WhatsApp Community Link</h2>
-                    <p className="solution-desc">Official workshop group for {order.creatorName}</p>
-                  </div>
+                  <h3 className="solution-heading">WhatsApp Community Link</h3>
+                  <p className="solution-subline">{order.creatorName}</p>
 
-                  <div className="solution-card-body" style={{ marginTop: '14px' }}>
+                  <div className="solution-body-card">
                     {flowData.whatsappCommunityLink ? (
                       <div>
                         <p style={{ fontSize: '0.9rem', marginBottom: '14px', color: 'var(--text-primary)' }}>
-                          Join the official WhatsApp Community to get workshop materials, worksheets, and live announcements:
+                          Join the official WhatsApp Community for updates and materials:
                         </p>
 
                         <a
                           href={flowData.whatsappCommunityLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="solution-btn-wa"
+                          className="solution-action-btn-wa"
                         >
                           Join WhatsApp Community
                         </a>
@@ -448,13 +330,13 @@ export default function CreatorLabsSupportPage() {
                           onClick={() =>
                             copyToClipboard(flowData.whatsappCommunityLink!, 'wa')
                           }
-                          className="solution-btn-copy"
+                          className="copy-button"
                         >
                           {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Community Link'}
                         </button>
                       </div>
                     ) : (
-                      <div className="solution-notice">
+                      <div className="solution-message-box">
                         The WhatsApp community link is currently being refreshed by the creator team. Please check back shortly.
                       </div>
                     )}
@@ -462,57 +344,45 @@ export default function CreatorLabsSupportPage() {
                 </div>
               )}
 
-              {/* SOLUTION FOR QUESTION 3: COURSE DETAILS / CREATOR CONTACT */}
-              {selectedQuestion === 3 && (
+              {/* Question 3: Course Support */}
+              {activeQuestion === 3 && (
                 <div>
-                  <div className="solution-header">
-                    <h2 className="solution-title">Course Access & Details</h2>
-                    <p className="solution-desc">Direct support for {order.creatorName}</p>
-                  </div>
+                  <h3 className="solution-heading">Course Access & Details</h3>
+                  <p className="solution-subline">{order.creatorName}</p>
 
-                  <div className="solution-card-body" style={{ marginTop: '14px' }}>
+                  <div className="solution-body-card">
                     <p style={{ fontSize: '0.9rem', marginBottom: '14px', color: 'var(--text-primary)' }}>
                       For course access and curriculum details, please contact the creator team directly:
                     </p>
 
-                    <div className="solution-contact-card">
-                      <div className="contact-row">
-                        <span className="contact-label">Email:</span>
+                    <div className="contacts-wrapper">
+                      <div className="contact-row-item">
+                        <span className="contact-item-key">Email:</span>
                         <a
                           href={`mailto:${flowData.creatorSupportEmail}`}
-                          className="contact-value-link"
+                          className="contact-item-val"
                         >
                           {flowData.creatorSupportEmail}
                         </a>
                       </div>
 
-                      <div className="contact-row">
-                        <span className="contact-label">Phone:</span>
+                      <div className="contact-row-item">
+                        <span className="contact-item-key">Phone:</span>
                         <a
                           href={`tel:${flowData.creatorSupportPhone.replace(/[^\d+]/g, '')}`}
-                          className="contact-value-link"
+                          className="contact-item-val"
                         >
                           {flowData.creatorSupportPhone}
                         </a>
                       </div>
 
-                      <div className="contact-instruction">
+                      <div className="contact-help-note">
                         Please contact on this number or email, and the team will assist you with your course access.
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
-              {/* Bottom Navigation */}
-              <button
-                type="button"
-                onClick={() => setSelectedQuestion(null)}
-                className="btn-ghost"
-                style={{ marginTop: '8px' }}
-              >
-                &larr; Back to Other Questions
-              </button>
             </div>
           )}
         </main>
