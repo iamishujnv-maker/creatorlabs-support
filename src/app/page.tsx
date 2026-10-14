@@ -92,211 +92,217 @@ export default function CreatorLabsSupportPage() {
 
   return (
     <div className="page-wrapper">
-      {/* Sleek, simple header */}
-      <header className="app-header">
-        <span className="brand-badge">Official Helpdesk</span>
-        <h1 className="header-title">Welcome to Creator Labs Support</h1>
-        <p className="header-subtitle">
-          Find and verify your workshop order details
-        </p>
-      </header>
+      <div className="center-container">
+        {/* Sleek header */}
+        <header className="app-header">
+          <span className="brand-badge">Official Helpdesk</span>
+          <h1 className="header-title">Welcome to Creator Labs Support</h1>
+          <p className="header-subtitle">
+            Find and verify your workshop order details
+          </p>
+        </header>
 
-      <main className="support-card">
-        {/* Step 1: Input Screen (Only Phone OR Email allowed) */}
-        {!order && (
-          <form onSubmit={handleSearch}>
-            <div className="toggle-wrapper">
-              <span className="toggle-label">Search using</span>
-              <div className="tab-toggle" role="tablist">
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={inputMode === 'phone'}
-                  className={`tab-btn ${inputMode === 'phone' ? 'active' : ''}`}
-                  onClick={() => handleModeChange('phone')}
-                >
-                  Phone Number
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={inputMode === 'email'}
-                  className={`tab-btn ${inputMode === 'email' ? 'active' : ''}`}
-                  onClick={() => handleModeChange('email')}
-                >
-                  Email Address
-                </button>
+        <main className="support-card">
+          {/* Step 1: Input Screen (Only Phone OR Email allowed) */}
+          {!order && (
+            <form onSubmit={handleSearch}>
+              <div className="toggle-wrapper">
+                <span className="toggle-label">Search using</span>
+                <div className="tab-toggle" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={inputMode === 'phone'}
+                    className={`tab-btn ${inputMode === 'phone' ? 'active' : ''}`}
+                    onClick={() => handleModeChange('phone')}
+                  >
+                    Phone Number
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={inputMode === 'email'}
+                    className={`tab-btn ${inputMode === 'email' ? 'active' : ''}`}
+                    onClick={() => handleModeChange('email')}
+                  >
+                    Email Address
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {errorMsg && (
-              <div className="alert-error" role="alert">
-                <span>{errorMsg}</span>
-              </div>
-            )}
+              {errorMsg && (
+                <div className="alert-error" role="alert">
+                  <span>{errorMsg}</span>
+                </div>
+              )}
 
-            {inputMode === 'phone' ? (
-              <div className="form-group">
-                <label htmlFor="phone-input" className="input-label">
-                  Registered Mobile Number
-                </label>
-                <div className="phone-input-group">
-                  <span className="phone-prefix">+91</span>
+              {inputMode === 'phone' ? (
+                <div className="form-group">
+                  <label htmlFor="phone-input" className="input-label">
+                    Registered Mobile Number
+                  </label>
+                  <div className="phone-input-group">
+                    <span className="phone-prefix">+91</span>
+                    <input
+                      id="phone-input"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                      placeholder="9876543210"
+                      className="phone-input"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="form-group">
+                  <label htmlFor="email-input" className="input-label">
+                    Registered Email Address
+                  </label>
                   <input
-                    id="phone-input"
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
+                    id="email-input"
+                    type="email"
+                    inputMode="email"
                     required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    placeholder="9876543210"
-                    className="phone-input"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@example.com"
+                    className="input-field"
                     autoFocus
                   />
                 </div>
-              </div>
-            ) : (
-              <div className="form-group">
-                <label htmlFor="email-input" className="input-label">
-                  Registered Email Address
-                </label>
-                <input
-                  id="email-input"
-                  type="email"
-                  inputMode="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="input-field"
-                  autoFocus
-                />
-              </div>
-            )}
+              )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary"
-            >
-              {loading ? 'Finding Order...' : 'Continue'}
-            </button>
-          </form>
-        )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+              >
+                {loading ? 'Finding Order...' : 'Continue'}
+              </button>
+            </form>
+          )}
 
-        {/* Step 2: Latest Paid Order Display & Confirmation */}
-        {order && !isConfirmed && (
-          <div>
-            <h2
-              style={{
-                fontSize: '1.15rem',
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                marginBottom: '4px',
-              }}
-            >
-              Confirm Your Order
-            </h2>
-            <p
-              style={{
-                fontSize: '0.875rem',
-                color: 'var(--text-secondary)',
-                marginBottom: '16px',
-              }}
-            >
-              Please verify your workshop registration details below.
-            </p>
+          {/* Step 2: Latest Paid Order Display & Confirmation */}
+          {order && !isConfirmed && (
+            <div>
+              <h2
+                style={{
+                  fontSize: '1.15rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  marginBottom: '4px',
+                }}
+              >
+                Confirm Your Order
+              </h2>
+              <p
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '16px',
+                }}
+              >
+                Please verify your workshop registration details below.
+              </p>
 
-            <div className="order-card-box">
-              <div className="order-box-header">
-                <span className="order-box-title">Latest Paid Order</span>
-                <span className="order-tag">Paid</span>
-              </div>
+              <div className="order-card-box">
+                <div className="order-box-header">
+                  <span className="order-box-title">Latest Paid Order</span>
+                  <span className="order-tag">Paid</span>
+                </div>
 
-              <div className="order-item-row">
-                <span className="order-item-label">Creator Name</span>
-                <span className="order-item-value">{order.creatorName}</span>
-              </div>
+                <div className="order-item-row">
+                  <span className="order-item-label">Creator Name</span>
+                  <span className="order-item-value">{order.creatorName}</span>
+                </div>
 
-              <div className="order-item-row">
-                <span className="order-item-label">Domain</span>
-                <span className="order-item-value">{order.domain}</span>
+                <div className="order-item-row">
+                  <span className="order-item-label">Domain</span>
+                  <span className="order-item-value">{order.domain}</span>
+                </div>
+
+                <div className="order-item-row">
+                  <span className="order-item-label">Registration Date</span>
+                  <span className="order-item-value">
+                    {formatDate(order.registrationDate)}
+                  </span>
+                </div>
+
+                <div className="order-item-row">
+                  <span className="order-item-label">Amount Paid</span>
+                  <span className="order-item-value amount-text">
+                    ₹{order.amountPaid}
+                  </span>
+                </div>
               </div>
 
-              <div className="order-item-row">
-                <span className="order-item-label">Registration Date</span>
-                <span className="order-item-value">
-                  {formatDate(order.registrationDate)}
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsConfirmed(true)}
+                className="btn-confirm"
+              >
+                Yes, This Is My Order (Confirm)
+              </button>
 
-              <div className="order-item-row">
-                <span className="order-item-label">Amount Paid</span>
-                <span className="order-item-value amount-text">
-                  ₹{order.amountPaid}
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="btn-ghost"
+              >
+                Not My Order (Search Again)
+              </button>
             </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => setIsConfirmed(true)}
-              className="btn-confirm"
-            >
-              Yes, This Is My Order (Confirm)
-            </button>
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="btn-ghost"
-            >
-              Not My Order (Search Again)
-            </button>
-          </div>
-        )}
-
-        {/* Step 3: Confirmed State */}
-        {order && isConfirmed && (
-          <div>
-            <div className="alert-success">
-              <span>✓ Order Confirmed for {order.creatorName}</span>
-            </div>
-
-            <div className="order-card-box">
-              <div className="order-item-row">
-                <span className="order-item-label">Creator</span>
-                <span className="order-item-value">{order.creatorName}</span>
+          {/* Step 3: Confirmed State */}
+          {order && isConfirmed && (
+            <div>
+              <div className="alert-success">
+                <span>✓ Order Confirmed for {order.creatorName}</span>
               </div>
-              <div className="order-item-row">
-                <span className="order-item-label">Domain</span>
-                <span className="order-item-value">{order.domain}</span>
-              </div>
-              <div className="order-item-row">
-                <span className="order-item-label">Amount</span>
-                <span className="order-item-value amount-text">
-                  ₹{order.amountPaid}
-                </span>
-              </div>
-            </div>
 
-            {/* Placeholder where further support options will be added in next prompt */}
-            <div className="next-step-box">
-              Support options will appear here in the next step.
-            </div>
+              <div className="order-card-box">
+                <div className="order-item-row">
+                  <span className="order-item-label">Creator</span>
+                  <span className="order-item-value">{order.creatorName}</span>
+                </div>
+                <div className="order-item-row">
+                  <span className="order-item-label">Domain</span>
+                  <span className="order-item-value">{order.domain}</span>
+                </div>
+                <div className="order-item-row">
+                  <span className="order-item-label">Amount</span>
+                  <span className="order-item-value amount-text">
+                    ₹{order.amountPaid}
+                  </span>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleReset}
-              className="btn-ghost"
-              style={{ marginTop: '16px' }}
-            >
-              Search Another Order
-            </button>
-          </div>
-        )}
-      </main>
+              {/* Placeholder where further support options will be added in next prompt */}
+              <div className="next-step-box">
+                Support options will appear here in the next step.
+              </div>
+
+              <button
+                type="button"
+                onClick={handleReset}
+                className="btn-ghost"
+                style={{ marginTop: '16px' }}
+              >
+                Search Another Order
+              </button>
+            </div>
+          )}
+        </main>
+
+        <footer className="app-footer">
+          <span>Official Creator Labs Helpdesk</span>
+        </footer>
+      </div>
     </div>
   );
 }
