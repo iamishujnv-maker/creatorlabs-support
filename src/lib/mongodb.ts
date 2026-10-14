@@ -36,6 +36,8 @@ export interface SupportFlowResult {
   whatsappCommunityLink: string | null;
   zoomLink: string | null;
   zoomSentAt: string | null;
+  creatorSupportEmail: string;
+  creatorSupportPhone: string;
 }
 
 /**
@@ -65,7 +67,7 @@ function extractZoomFromMessage(messageDoc: any): string | null {
  * Executes the full support flow:
  * 1. Takes user input (phone or email)
  * 2. Fetches latest paid order within the last 7 days
- * 3. Fetches WhatsApp community link from the 'constants' collection
+ * 3. Fetches WhatsApp community link & creator support info from 'constants'
  * 4. Checks ALL messages for this user to find any message containing a Zoom link
  */
 export async function getSupportOrderFlow(input: string): Promise<SupportFlowResult | null> {
@@ -135,8 +137,10 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
     ? new Date(order.createdAt).toISOString()
     : new Date().toISOString();
 
-  // 2. Fetch WhatsApp Community link from constants table
+  // 2. Fetch WhatsApp Community link and Creator Support contacts from constants table
   let whatsappCommunityLink: string | null = null;
+  let creatorSupportEmail: string | null = null;
+  let creatorSupportPhone: string | null = null;
 
   try {
     const constantDoc = await dbWorkshops.collection('constants').findOne({
@@ -152,6 +156,13 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
         constantDoc.constants.PAYMENT_SUCCESS_REDIRECT ||
         constantDoc.constants.CONSULTATION_WA_LINK ||
         null;
+
+      if (constantDoc.constants.CREATOR_SUPPORT_EMAIL) {
+        creatorSupportEmail = String(constantDoc.constants.CREATOR_SUPPORT_EMAIL);
+      }
+      if (constantDoc.constants.CREATOR_SUPPORT_PHONE) {
+        creatorSupportPhone = String(constantDoc.constants.CREATOR_SUPPORT_PHONE);
+      }
     }
   } catch (err) {
     console.warn('Error reading constants table:', err);
@@ -160,6 +171,21 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
   // Fallback to order notes if constants didn't have link
   if (!whatsappCommunityLink) {
     whatsappCommunityLink = order.notes?.whatsapp_url || order.workshopUrl || null;
+  }
+
+  // Fallbacks for creator support email & phone
+  if (!creatorSupportEmail) {
+    creatorSupportEmail =
+      order.notes?.creator_email ||
+      order.notes?.support_email ||
+      'support@creatorlabs.in';
+  }
+
+  if (!creatorSupportPhone) {
+    creatorSupportPhone =
+      order.notes?.creator_phone ||
+      order.notes?.support_phone ||
+      '+91 95882 03732';
   }
 
   // 3. Fetch Zoom link: check ALL messages for this user (filtering by phone and domain)
@@ -236,6 +262,8 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
     whatsappCommunityLink,
     zoomLink,
     zoomSentAt,
+    creatorSupportEmail: creatorSupportEmail || 'support@creatorlabs.in',
+    creatorSupportPhone: creatorSupportPhone || '+91 95882 03732',
   };
 }
 

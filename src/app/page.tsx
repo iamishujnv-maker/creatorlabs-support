@@ -3,6 +3,14 @@
 import React, { useState } from 'react';
 import { SupportFlowResult } from '@/lib/mongodb';
 
+interface ChatMessage {
+  id: string;
+  sender: 'bot' | 'user';
+  text: string;
+  type?: 'text' | 'zoom' | 'whatsapp' | 'course_support';
+  data?: any;
+}
+
 export default function CreatorLabsSupportPage() {
   // Input mode: only ONE is allowed at a time ('phone' or 'email')
   const [inputMode, setInputMode] = useState<'phone' | 'email'>('phone');
@@ -16,8 +24,9 @@ export default function CreatorLabsSupportPage() {
   const [flowData, setFlowData] = useState<SupportFlowResult | null>(null);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
-  // Copy feedback states
-  const [copiedType, setCopiedType] = useState<'wa' | 'zoom' | null>(null);
+  // Chat conversation state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [copiedType, setCopiedType] = useState<string | null>(null);
 
   // Switch between phone or email
   const handleModeChange = (mode: 'phone' | 'email') => {
@@ -71,16 +80,108 @@ export default function CreatorLabsSupportPage() {
     }
   };
 
+  const handleConfirmOrder = () => {
+    if (!flowData) return;
+    setIsConfirmed(true);
+
+    // Initialize the chat with the bot's greeting
+    setChatMessages([
+      {
+        id: 'msg-welcome',
+        sender: 'bot',
+        text: `Hi ${flowData.order.customerName || 'there'}! 👋 I have verified your order for ${flowData.order.creatorName}. How can I help you today?`,
+        type: 'text',
+      },
+    ]);
+  };
+
+  // Handle clicking one of the 3 chat questions
+  const handleSelectQuestion = (questionId: 1 | 2 | 3) => {
+    if (!flowData) return;
+
+    if (questionId === 1) {
+      // 1. I want zoom link for the workshop
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'I want zoom link for the workshop',
+      };
+
+      const botMsg: ChatMessage = flowData.zoomLink
+        ? {
+            id: `bot-${Date.now()}`,
+            sender: 'bot',
+            text: 'Here is your Zoom link for the workshop:',
+            type: 'zoom',
+            data: { zoomLink: flowData.zoomLink },
+          }
+        : {
+            id: `bot-${Date.now()}`,
+            sender: 'bot',
+            text: 'You will receive the Zoom link via WhatsApp one day before the webinar.',
+            type: 'text',
+          };
+
+      setChatMessages((prev) => [...prev, userMsg, botMsg]);
+    } else if (questionId === 2) {
+      // 2. I want whatsapp community link
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'I want whatsapp community link',
+      };
+
+      const botMsg: ChatMessage = flowData.whatsappCommunityLink
+        ? {
+            id: `bot-${Date.now()}`,
+            sender: 'bot',
+            text: `Here is the official WhatsApp Community link for ${flowData.order.creatorName}:`,
+            type: 'whatsapp',
+            data: { whatsappLink: flowData.whatsappCommunityLink },
+          }
+        : {
+            id: `bot-${Date.now()}`,
+            sender: 'bot',
+            text: 'The WhatsApp community link is currently being refreshed by the creator team. Please check back shortly.',
+            type: 'text',
+          };
+
+      setChatMessages((prev) => [...prev, userMsg, botMsg]);
+    } else if (questionId === 3) {
+      // 3. I purchased the course didn't receive the details
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'user',
+        text: 'I purchased the course didn’t receive the details',
+      };
+
+      const botMsg: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        sender: 'bot',
+        text: `For course access and curriculum details, please contact the creator team directly:`,
+        type: 'course_support',
+        data: {
+          creatorName: flowData.order.creatorName,
+          email: flowData.creatorSupportEmail,
+          phone: flowData.creatorSupportPhone,
+        },
+      };
+
+      setChatMessages((prev) => [...prev, userMsg, botMsg]);
+    }
+  };
+
+  const copyToClipboard = (text: string, identifier: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedType(identifier);
+    setTimeout(() => setCopiedType(null), 2500);
+  };
+
   const handleReset = () => {
     setFlowData(null);
     setIsConfirmed(false);
+    setChatMessages([]);
     setErrorMsg(null);
-  };
-
-  const copyToClipboard = (text: string, type: 'wa' | 'zoom') => {
-    navigator.clipboard.writeText(text);
-    setCopiedType(type);
-    setTimeout(() => setCopiedType(null), 2500);
   };
 
   const formatDate = (dateStr: string) => {
@@ -104,7 +205,7 @@ export default function CreatorLabsSupportPage() {
   return (
     <div className="page-wrapper">
       <div className="center-container">
-        {/* Sleek header */}
+        {/* Header */}
         <header className="app-header">
           <span className="brand-badge">Official Helpdesk</span>
           <h1 className="header-title">Welcome to Creator Labs Support</h1>
@@ -197,7 +298,7 @@ export default function CreatorLabsSupportPage() {
             </form>
           )}
 
-          {/* Step 2: Latest Paid Order Display & Confirmation (Order in last 7 days) */}
+          {/* Step 2: Latest Paid Order Display & Confirmation */}
           {order && !isConfirmed && (
             <div>
               <h2
@@ -253,7 +354,7 @@ export default function CreatorLabsSupportPage() {
 
               <button
                 type="button"
-                onClick={() => setIsConfirmed(true)}
+                onClick={handleConfirmOrder}
                 className="btn-confirm"
               >
                 Yes, This Is My Order (Confirm)
@@ -269,103 +370,158 @@ export default function CreatorLabsSupportPage() {
             </div>
           )}
 
-          {/* Step 3 & 4: Confirmed State -> Show WhatsApp Community & Zoom Links */}
+          {/* Step 3: Interactive Chat Screen */}
           {order && isConfirmed && (
-            <div>
-              <div className="alert-success">
-                <span>✓ Order Verified for {order.creatorName}</span>
+            <div className="chat-window">
+              {/* Chat Top Bar */}
+              <div className="chat-top-bar">
+                <div className="chat-agent-info">
+                  <div className="agent-avatar">🤖</div>
+                  <div>
+                    <div className="agent-name">{order.creatorName} Assistant</div>
+                    <div className="agent-status">
+                      <span className="agent-dot" /> Online • Support Bot
+                    </div>
+                  </div>
+                </div>
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    background: '#f1f5f9',
+                    color: 'var(--text-secondary)',
+                    padding: '3px 8px',
+                    borderRadius: '9999px',
+                    fontWeight: 600,
+                  }}
+                >
+                  ₹{order.amountPaid} Paid
+                </span>
               </div>
 
-              <div className="resource-cards-list">
-                {/* 3. WhatsApp Community Link (from constants table) */}
-                <div className="resource-card resource-card-wa">
-                  <div className="resource-header">
-                    <span className="resource-title" style={{ color: '#16a34a' }}>
-                      💬 WhatsApp Community
-                    </span>
-                    <span className="resource-status-badge" style={{ color: '#16a34a' }}>
-                      {flowData.whatsappCommunityLink ? 'Link Available' : 'Pending'}
-                    </span>
+              {/* Chat Messages Stream */}
+              <div className="messages-stream">
+                {chatMessages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`msg-bubble ${
+                      msg.sender === 'user' ? 'msg-user' : 'msg-bot'
+                    }`}
+                  >
+                    <div>{msg.text}</div>
+
+                    {/* Question 1: Zoom Link Response */}
+                    {msg.type === 'zoom' && msg.data?.zoomLink && (
+                      <div className="chat-action-card">
+                        <a
+                          href={msg.data.zoomLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-zoom"
+                        >
+                          Join Zoom Meeting
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(msg.data.zoomLink, 'zoom')}
+                          className="btn-copy"
+                        >
+                          {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Question 2: WhatsApp Community Link Response */}
+                    {msg.type === 'whatsapp' && msg.data?.whatsappLink && (
+                      <div className="chat-action-card">
+                        <a
+                          href={msg.data.whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-whatsapp"
+                        >
+                          Join WhatsApp Community
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyToClipboard(msg.data.whatsappLink, 'wa')
+                          }
+                          className="btn-copy"
+                        >
+                          {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Community Link'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Question 3: Course Support Details Response */}
+                    {msg.type === 'course_support' && msg.data && (
+                      <div className="contact-details-box">
+                        <div className="contact-row">
+                          <span className="contact-label">Email:</span>
+                          <a
+                            href={`mailto:${msg.data.email}`}
+                            className="contact-link"
+                          >
+                            {msg.data.email}
+                          </a>
+                        </div>
+
+                        <div className="contact-row">
+                          <span className="contact-label">Phone:</span>
+                          <a
+                            href={`tel:${msg.data.phone.replace(/[^\d+]/g, '')}`}
+                            className="contact-link"
+                          >
+                            {msg.data.phone}
+                          </a>
+                        </div>
+
+                        <div className="contact-note">
+                          Please contact on this number or email, and the team will assist you with your course access.
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="resource-desc">
-                    Join the official attendee group to get workshop materials, worksheets, and live announcements.
-                  </p>
+                ))}
+              </div>
 
-                  {flowData.whatsappCommunityLink ? (
-                    <div>
-                      <a
-                        href={flowData.whatsappCommunityLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-whatsapp"
-                      >
-                        Join WhatsApp Community
-                      </a>
+              {/* Quick Questions Section */}
+              <div className="quick-questions-wrapper">
+                <span className="quick-questions-title">Choose an option</span>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyToClipboard(flowData.whatsappCommunityLink!, 'wa')
-                        }
-                        className="btn-copy"
-                      >
-                        {copiedType === 'wa' ? '✓ Link Copied!' : 'Copy Group Link'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="resource-notice">
-                      Community link is being refreshed by the creator team. Please check back shortly.
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuestion(1)}
+                  className="question-chip"
+                >
+                  <span>1. I want zoom link for the workshop</span>
+                  <span className="chip-arrow">&rarr;</span>
+                </button>
 
-                {/* 4. Zoom Link (checked across ALL messages matching phone & domain) */}
-                <div className="resource-card resource-card-zoom">
-                  <div className="resource-header">
-                    <span className="resource-title" style={{ color: '#2563eb' }}>
-                      🎥 Zoom Webinar Room
-                    </span>
-                    <span className="resource-status-badge" style={{ color: '#2563eb' }}>
-                      {flowData.zoomLink ? 'Ready to Join' : 'Sent 1 Day Before'}
-                    </span>
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuestion(2)}
+                  className="question-chip"
+                >
+                  <span>2. I want whatsapp community link</span>
+                  <span className="chip-arrow">&rarr;</span>
+                </button>
 
-                  {flowData.zoomLink ? (
-                    <div>
-                      <p className="resource-desc">
-                        Here is your live session join link.
-                      </p>
-
-                      <a
-                        href={flowData.zoomLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-zoom"
-                      >
-                        Join Zoom Meeting
-                      </a>
-
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(flowData.zoomLink!, 'zoom')}
-                        className="btn-copy"
-                      >
-                        {copiedType === 'zoom' ? '✓ Link Copied!' : 'Copy Zoom Link'}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="resource-notice">
-                      You will receive the Zoom link via WhatsApp one day before the webinar.
-                    </div>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectQuestion(3)}
+                  className="question-chip"
+                >
+                  <span>3. I purchased the course didn’t receive the details</span>
+                  <span className="chip-arrow">&rarr;</span>
+                </button>
               </div>
 
               <button
                 type="button"
                 onClick={handleReset}
                 className="btn-ghost"
-                style={{ marginTop: '14px' }}
+                style={{ marginTop: '8px' }}
               >
                 Search Another Order
               </button>
