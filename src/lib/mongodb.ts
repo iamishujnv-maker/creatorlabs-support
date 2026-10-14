@@ -39,11 +39,34 @@ export interface SupportFlowResult {
 }
 
 /**
+ * Helper to extract Zoom link from message variables or content
+ */
+function extractZoomFromMessage(messageDoc: any): string | null {
+  if (!messageDoc) return null;
+
+  // 1. Check variables object (MSG91 templates usually store URL in body_1, body_2, etc.)
+  if (messageDoc.variables && typeof messageDoc.variables === 'object') {
+    for (const key of Object.keys(messageDoc.variables)) {
+      const val = String(messageDoc.variables[key]);
+      const match = val.match(/https?:\/\/[^\s"'<>]*zoom\.us[^\s"'<>]*/i);
+      if (match) return match[0].trim();
+    }
+  }
+
+  // 2. Check full message string or raw body if available
+  const stringified = JSON.stringify(messageDoc);
+  const match = stringified.match(/https?:\/\/[^\s"'\\<>]*zoom\.us[^\s"'\\<>]*/i);
+  if (match) return match[0].trim();
+
+  return null;
+}
+
+/**
  * Executes the full support flow:
  * 1. Takes user input (phone or email)
  * 2. Fetches latest paid order within the last 7 days
  * 3. Fetches WhatsApp community link from the 'constants' collection
- * 4. Fetches Zoom link from the 'messages' collection filtered by phone & domain
+ * 4. Checks ALL messages for this user to find any message containing a Zoom link
  */
 export async function getSupportOrderFlow(input: string): Promise<SupportFlowResult | null> {
   const connectedClient = await clientPromise;
@@ -139,7 +162,7 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
     whatsappCommunityLink = order.notes?.whatsapp_url || order.workshopUrl || null;
   }
 
-  // 3. Fetch Zoom link from messages table (matching attendee phone and domain)
+  // 3. Fetch Zoom link: check ALL messages for this user (filtering by phone and domain)
   const phoneToSearch = order.customerPhone || order.notes?.customer_phone || input;
   const searchDigits = phoneToSearch.replace(/\D/g, '').slice(-10);
 
@@ -151,28 +174,46 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
       phoneNumber: { $regex: new RegExp(`${searchDigits}$`) },
     };
 
-    // Search in test_workshops and workshops
+    // Check ALL messages across both databases
     for (const db of [dbTest, dbWorkshops]) {
       try {
-        const msgs = await db
+        const allMessages = await db
           .collection('messages')
           .find(msgFilter)
           .sort({ createdAt: -1 })
           .toArray();
 
-        for (const m of msgs) {
-          const vars = m.variables || {};
-          for (const key of Object.keys(vars)) {
-            const val = String(vars[key]);
-            const match = val.match(/https?:\/\/[^\s]*zoom\.us[^\s]*/i);
-            if (match) {
-              zoomLink = match[0].trim();
+        // 1st pass: Look for any message that matches domain AND contains Zoom link
+        for (const m of allMessages) {
+          const msgDomain = (m.domain || '').toLowerCase();
+          const targetDomain = cleanDomain.toLowerCase().replace('.dev.', '');
+          const isDomainMatch =
+            !m.domain ||
+            msgDomain.includes(targetDomain) ||
+            targetDomain.includes(msgDomain);
+
+          if (isDomainMatch) {
+            const foundZoom = extractZoomFromMessage(m);
+            if (foundZoom) {
+              zoomLink = foundZoom;
               zoomSentAt = m.createdAt ? new Date(m.createdAt).toISOString() : null;
               break;
             }
           }
-          if (zoomLink) break;
         }
+
+        // 2nd pass: If domain filter didn't catch it, check ALL other messages for this phone
+        if (!zoomLink) {
+          for (const m of allMessages) {
+            const foundZoom = extractZoomFromMessage(m);
+            if (foundZoom) {
+              zoomLink = foundZoom;
+              zoomSentAt = m.createdAt ? new Date(m.createdAt).toISOString() : null;
+              break;
+            }
+          }
+        }
+
         if (zoomLink) break;
       } catch (err) {
         console.warn('Error querying messages table:', err);

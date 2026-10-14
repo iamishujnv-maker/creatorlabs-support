@@ -319,14 +319,14 @@ export default function CreatorLabsSupportPage() {
                   )}
                 </div>
 
-                {/* 4. Zoom Link (from messages table filtered by phone & domain) */}
+                {/* 4. Zoom Link (checked across ALL messages matching phone & domain) */}
                 <div className="resource-card resource-card-zoom">
                   <div className="resource-header">
                     <span className="resource-title" style={{ color: '#2563eb' }}>
                       🎥 Zoom Webinar Room
                     </span>
                     <span className="resource-status-badge" style={{ color: '#2563eb' }}>
-                      {flowData.zoomLink ? 'Ready to Join' : 'Broadcast Pending'}
+                      {flowData.zoomLink ? 'Ready to Join' : 'Sent 1 Day Before'}
                     </span>
                   </div>
 
@@ -355,7 +355,7 @@ export default function CreatorLabsSupportPage() {
                     </div>
                   ) : (
                     <div className="resource-notice">
-                      The Zoom link has not been sent yet. The creator broadcasts the Zoom room via WhatsApp & SMS a few hours before the live session starts.
+                      You will receive the Zoom link via WhatsApp one day before the webinar.
                     </div>
                   )}
                 </div>
