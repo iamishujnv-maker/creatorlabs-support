@@ -342,37 +342,65 @@ export default function CreatorLabsSupportApp() {
               ======================================================== */}
           {screen === '1B' && order && (
             <div>
-              {/* Registration Confirmation Text (No outer box) */}
-              <div className="registration-status-block">
-                <div className="registration-status-text">
+              {/* Registration Details (Pointer List) */}
+              <div className="registration-details-block">
+                <div className="registration-heading-row">
                   <span className="inline-check-icon">✓</span>
-                  <span>
-                    {lang === 'hi' ? (
-                      <>
-                        आपने <strong>{order.creatorName}</strong> के साथ <strong>{formatDate(order.registrationDate)}</strong> को वर्कशॉप के लिए रजिस्टर किया है
-                      </>
-                    ) : (
-                      <>
-                        You have registered for the workshop with <strong>{order.creatorName}</strong> on <strong>{formatDate(order.registrationDate)}</strong>
-                      </>
-                    )}
+                  <span className="registration-heading-text">
+                    {lang === 'hi'
+                      ? 'आपका रजिस्ट्रेशन सफल हो चुका है'
+                      : 'Your registration is confirmed'}
                   </span>
                 </div>
-                <div className="masked-contact-sub">
-                  <span>
-                    {order.customerPhone
-                      ? maskPhone(order.customerPhone)
-                      : maskEmail(order.customerEmail)}
-                  </span>
-                  <span className="dot-sep">•</span>
-                  <button
-                    type="button"
-                    onClick={handleResetTo1A}
-                    className="change-link"
-                  >
-                    {t.change}
-                  </button>
-                </div>
+
+                <ul className="details-list">
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'नाम' : 'Name'}</span>
+                    <span className="detail-value">{order.customerName}</span>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'क्रिएटर' : 'Creator'}</span>
+                    <span className="detail-value">{order.creatorName}</span>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'रजिस्ट्रेशन पेज' : 'Registration page'}</span>
+                    <a
+                      href={`https://${order.domain}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="detail-value detail-link"
+                    >
+                      {order.domain}
+                    </a>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'भुगतान राशि' : 'Amount paid'}</span>
+                    <span className="detail-value">
+                      {order.currency === 'INR' ? '₹' : order.currency}{order.amountPaid}
+                    </span>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'रजिस्ट्रेशन तिथि' : 'Date'}</span>
+                    <span className="detail-value">{formatDate(order.registrationDate)}</span>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'फोन' : 'Phone'}</span>
+                    <span className="detail-value">{order.customerPhone || '—'}</span>
+                  </li>
+                  <li>
+                    <span className="detail-label">{lang === 'hi' ? 'ईमेल' : 'Email'}</span>
+                    <span className="detail-value">{order.customerEmail || '—'}</span>
+                  </li>
+                </ul>
+
+                <button
+                  type="button"
+                  onClick={handleResetTo1A}
+                  className="change-link"
+                  style={{ marginTop: '8px' }}
+                >
+                  {lang === 'hi' ? 'दूसरा नंबर/ईमेल आज़माएं' : 'Not you? Search again'}
+                </button>
               </div>
 
               {/* Heading: What do you need? */}

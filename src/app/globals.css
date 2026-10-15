@@ -235,18 +235,16 @@ body {
   text-decoration: underline;
 }
 
-/* Screen 1B: Help Options */
-.registration-status-block {
-  margin-bottom: 24px;
+/* Screen 1B: Registration Details Block */
+.registration-details-block {
+  margin-bottom: 4px;
 }
 
-.registration-status-text {
+.registration-heading-row {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: #1e293b;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 
 .inline-check-icon {
@@ -261,26 +259,59 @@ body {
   font-size: 0.75rem;
   font-weight: 800;
   flex-shrink: 0;
-  margin-top: 3px;
 }
 
-.registration-status-text strong {
-  color: #0f172a;
+.registration-heading-text {
+  font-size: 1.05rem;
   font-weight: 700;
+  color: #15803d;
 }
 
-.masked-contact-sub {
+/* Details Pointer List */
+.details-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  margin-top: 6px;
-  padding-left: 34px;
+  flex-direction: column;
+  gap: 0;
 }
 
-.dot-sep {
-  color: #cbd5e1;
+.details-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.details-list li:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 110px;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+.detail-link {
+  color: var(--primary-blue);
+  text-decoration: none;
+}
+
+.detail-link:hover {
+  text-decoration: underline;
 }
 
 .change-link {
@@ -289,7 +320,7 @@ body {
   background: transparent;
   border: none;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-family: inherit;
   padding: 0;
 }
