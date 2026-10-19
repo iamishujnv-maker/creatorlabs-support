@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SupportFlowResult } from '@/lib/mongodb';
 
-type Screen = '1A' | '1B' | '2A' | '2B' | '2C';
+const TAWKTO_CHAT_URL = 'https://tawk.to/chat/6ac4db450c900e34c9040cc7/1k48fh2cc';
+
+type Screen = '1A' | '1B' | '2A' | '2B' | '2C' | '2D';
 type Language = 'en' | 'hi';
 
 export default function CreatorLabsSupportApp() {
@@ -17,9 +19,10 @@ export default function CreatorLabsSupportApp() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Data & Copy states
+  // Data, Copy & Chat states
   const [flowData, setFlowData] = useState<SupportFlowResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   // Bilingual strings matching wireframes
   const t = {
@@ -41,6 +44,12 @@ export default function CreatorLabsSupportApp() {
       optZoom: 'Zoom link for workshop',
       optWA: 'WhatsApp community link',
       optPaid: 'I paid but got no details',
+      optChat: 'More or other questions? Chat with us',
+      chatTitle: 'Live chat support',
+      chatSub: 'Real-time help from Creator Labs team',
+      startChatBtn: 'Start live chat',
+      copyChatLinkBtn: 'Copy chat link',
+      chatNotice: 'Have other questions about your registration, course details, or timing? Connect directly with our support team on tawk.to.',
       back: 'Back',
       zoomSub: 'Live webinar access',
       joinZoomBtn: 'Join Zoom meeting',
@@ -75,6 +84,12 @@ export default function CreatorLabsSupportApp() {
       optZoom: 'वर्कशॉप का ज़ूम लिंक',
       optWA: 'व्हाट्सएप कम्युनिटी लिंक',
       optPaid: 'पैसे कट गए लेकिन डिटेल्स नहीं मिलीं',
+      optChat: 'अन्य कोई सवाल? हमसे चैट करें',
+      chatTitle: 'लाइव चैट सहायता',
+      chatSub: 'क्रिएटर लैब्स टीम से तुरंत सहायता प्राप्त करें',
+      startChatBtn: 'लाइव चैट शुरू करें',
+      copyChatLinkBtn: 'चैट लिंक कॉपी करें',
+      chatNotice: 'रजिस्ट्रेशन, कोर्स विवरण या समय को लेकर कोई अन्य प्रश्न है? tawk.to पर हमारी टीम से सीधे लाइव चैट करें।',
       back: 'वापस',
       zoomSub: 'लाइव वेबिनार एक्सेस',
       joinZoomBtn: 'ज़ूम मीटिंग से जुड़ें',
@@ -163,6 +178,17 @@ export default function CreatorLabsSupportApp() {
     setScreen('1A');
     setErrorMsg(null);
   };
+
+  // Close fullscreen chat on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isChatOpen) {
+        setIsChatOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isChatOpen]);
 
   // Masking phone number like wireframe: +91 98••••••210
   const maskPhone = (rawPhone: string) => {
@@ -266,13 +292,32 @@ export default function CreatorLabsSupportApp() {
                     background: '#fef2f2',
                     border: '1px solid #fecaca',
                     color: '#dc2626',
-                    padding: '10px 12px',
+                    padding: '12px 14px',
                     borderRadius: '8px',
                     fontSize: '0.85rem',
                     marginBottom: '16px',
                   }}
                 >
-                  {errorMsg}
+                  <div>{errorMsg}</div>
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #fee2e2', fontSize: '0.8rem', color: '#475569' }}>
+                    {lang === 'hi' ? 'कोई अन्य समस्या है? ' : 'Need more help? '}
+                    <button
+                      type="button"
+                      onClick={() => setIsChatOpen(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#0284c7',
+                        fontWeight: 600,
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        padding: 0,
+                        font: 'inherit',
+                      }}
+                    >
+                      {lang === 'hi' ? 'लाइव चैट पर बात करें ↗' : 'Chat with us on Live Support ↗'}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -449,6 +494,19 @@ export default function CreatorLabsSupportApp() {
                   </div>
                   <span className="chevron-arrow">&rsaquo;</span>
                 </button>
+
+                {/* Option 4: Live Chat / Other Questions */}
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="help-option-card"
+                >
+                  <div className="option-left-content">
+                    <span className="option-icon" style={{ color: '#0284c7' }}>💬</span>
+                    <span className="option-text">{t.optChat}</span>
+                  </div>
+                  <span className="chevron-arrow">&rsaquo;</span>
+                </button>
               </div>
             </div>
           )}
@@ -568,7 +626,59 @@ export default function CreatorLabsSupportApp() {
                   <span>{t.emailTeamBtn}</span>
                 </a>
 
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="btn-action-outline"
+                  style={{ marginTop: '10px', color: '#0284c7', borderColor: '#bae6fd' }}
+                >
+                  <span>💬</span>
+                  <span>{lang === 'hi' ? 'लाइव चैट खोलें' : 'Open live chat'}</span>
+                </button>
+
                 <p className="caption-email-sub">{flowData?.creatorSupportEmail}</p>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================
+              SCREEN 2D: LIVE CHAT (TAWK.TO)
+              ======================================================== */}
+          {screen === '2D' && (
+            <div>
+              <h2 className="detail-view-title">{t.chatTitle}</h2>
+              <p className="detail-view-subtitle">
+                {order?.creatorName ? `${order.creatorName} • ` : ''}{t.chatSub}
+              </p>
+
+              <div>
+                <div className="link-display-pill">
+                  <span className="link-icon-wrap" style={{ color: '#0284c7' }}>💬</span>
+                  <span>tawk.to/creatorlabs</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="btn-action-primary-blue"
+                  style={{ background: '#0284c7' }}
+                >
+                  <span>💬</span>
+                  <span>{t.startChatBtn}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => copyLink(TAWKTO_CHAT_URL)}
+                  className="btn-action-outline"
+                >
+                  <span>📋</span>
+                  <span>{copied ? t.copiedBtn : t.copyChatLinkBtn}</span>
+                </button>
+
+                <div className="notice-box-clean" style={{ marginTop: '16px' }}>
+                  {t.chatNotice}
+                </div>
               </div>
             </div>
           )}
@@ -580,6 +690,43 @@ export default function CreatorLabsSupportApp() {
           <span>{t.footerBadge}</span>
         </footer>
       </div>
+
+      {/* Fullscreen Live Chat Overlay */}
+      {isChatOpen && (
+        <div className="fullscreen-chat-overlay" role="dialog" aria-modal="true" aria-label="Creator Labs Live Support">
+          <div className="fullscreen-chat-header">
+            <button
+              type="button"
+              onClick={() => setIsChatOpen(false)}
+              className="chat-back-btn"
+            >
+              <span>&larr;</span>
+              <span>{lang === 'hi' ? 'वापस' : 'Back'}</span>
+            </button>
+            <div className="chat-header-center">
+              <span className="chat-header-dot"></span>
+              <span>Creator Labs Live Support</span>
+            </div>
+            <a
+              href={TAWKTO_CHAT_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="chat-external-btn"
+              title={lang === 'hi' ? 'नए टैब में खोलें' : 'Open in new tab'}
+            >
+              <span>↗</span>
+            </a>
+          </div>
+          <div className="fullscreen-chat-body">
+            <iframe
+              src={TAWKTO_CHAT_URL}
+              title="Creator Labs Live Chat"
+              className="fullscreen-chat-iframe"
+              allow="microphone; camera; autoplay"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
