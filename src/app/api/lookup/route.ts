@@ -48,9 +48,9 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('query');
+    const rawQuery = searchParams.get('query');
 
-    if (!query || query.trim().length < 3) {
+    if (!rawQuery) {
       return NextResponse.json(
         {
           success: false,
@@ -58,6 +58,34 @@ export async function GET(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    const query = rawQuery.replace(/\s+/g, '');
+    const isEmail = query.includes('@');
+
+    if (isEmail) {
+      const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+      if (!emailRegex.test(query)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Please enter a valid email address with domain (e.g. name@gmail.com).',
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      const digitsOnly = query.replace(/\D/g, '');
+      const core10 = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+      if (core10.length !== 10) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Please enter a valid 10-digit mobile number.',
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const result = await lookupSupportAttendee(query);

@@ -11,9 +11,12 @@ export interface PaidWorkshopItem {
   domain: string;
   amount: number;
   currency: string;
+  registeredAt: string;
+  registrationDateFormatted: string;
+  hasWorkshopDate: boolean;
   workshopTimeUtc: string | null;
-  workshopTimeFormatted: string;
-  relativeTimeText: string;
+  workshopTimeFormatted: string | null;
+  relativeTimeText: string | null;
   statusBadge: 'Upcoming' | 'Live now' | 'Completed' | null;
   statusCategory: 'UPCOMING' | 'LIVE_NOW' | 'COMPLETED';
   whatsappCommunityLink: string | null;
@@ -84,6 +87,31 @@ function formatWorkshopTimeIST(date: Date): string {
 }
 
 /**
+ * Format registration date & time in IST (e.g. "22 Oct 2026, 12:16 PM")
+ */
+export function formatRegistrationDateIST(createdAt: any): string {
+  if (!createdAt) return '';
+  try {
+    const date = new Date(createdAt);
+    if (isNaN(date.getTime())) return '';
+
+    const dayNum = date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' });
+    const month = date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' });
+    const year = date.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' });
+    const timeStr = date.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    return `${dayNum} ${month} ${year}, ${timeStr.toUpperCase()}`;
+  } catch (e) {
+    return '';
+  }
+}
+
+/**
  * Compute relative human text in IST
  */
 function computeRelativeISTText(workshopDate: Date, status: 'Upcoming' | 'Live now' | 'Completed'): string {
@@ -138,8 +166,8 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
   const normalizedEmail = trimmed.toLowerCase();
 
   const connectedClient = await clientPromise;
-  const dbWorkshops = connectedClient.db('workshops');
-  const dbTest = connectedClient.db('test_workshops');
+  // Use strictly the database specified in the connection string (e.g. test_workshops)
+  const db = connectedClient.db();
 
   const lookbackCutoff = new Date(Date.now() - config.LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
@@ -167,13 +195,8 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
     ];
   }
 
-  // Fetch orders from primary DB
-  let orders = await dbWorkshops.collection('orders').find(orderQuery).sort({ createdAt: -1 }).toArray();
-
-  // If none found in workshops, check test_workshops
-  if (orders.length === 0) {
-    orders = await dbTest.collection('orders').find(orderQuery).sort({ createdAt: -1 }).toArray();
-  }
+  // Fetch orders strictly from the configured DB
+  const orders = await db.collection('orders').find(orderQuery).sort({ createdAt: -1 }).toArray();
 
   // Filter out refunded
   const validOrders = orders.filter((o) => {
@@ -191,7 +214,7 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
   if (uniqueDomains.length > 0) {
     const cleanList = uniqueDomains.map((d: string) => d.replace(/^https?:\/\//, '').replace(/\/$/, ''));
     try {
-      const constantsDocs = await dbWorkshops
+      const constantsDocs = await db
         .collection('constants')
         .find({ site: { $in: cleanList } })
         .toArray();
@@ -231,16 +254,23 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         order.notes?.customer_name ||
         'Student';
 
+      // Registration date & time in IST
+      const registrationDateRaw = order.createdAt;
+      const registeredAt = registrationDateRaw ? new Date(registrationDateRaw).toISOString() : '';
+      const registrationDateFormatted = formatRegistrationDateIST(registrationDateRaw);
+
       // Parse workshop start time (W) from notes.workshopTimeUtc
       const rawWorkshopTime = order.notes?.workshopTimeUtc;
       let workshopDate: Date | null = null;
       let statusBadge: 'Upcoming' | 'Live now' | 'Completed' | null = null;
       let statusCategory: 'UPCOMING' | 'LIVE_NOW' | 'COMPLETED' = 'UPCOMING';
+      let hasWorkshopDate = false;
 
       if (rawWorkshopTime) {
         const parsed = new Date(rawWorkshopTime);
         if (!isNaN(parsed.getTime())) {
           workshopDate = parsed;
+          hasWorkshopDate = true;
           const wTime = parsed.getTime();
 
           if (now < wTime) {
@@ -257,18 +287,17 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
       }
 
       if (!statusBadge) {
-        // workshop time missing or unparseable → treat as Upcoming for chips, no badge
         statusBadge = null;
         statusCategory = 'UPCOMING';
       }
 
-      const workshopTimeFormatted = workshopDate
+      const workshopTimeFormatted = hasWorkshopDate && workshopDate
         ? formatWorkshopTimeIST(workshopDate)
-        : 'Time details in community';
+        : null;
 
-      const relativeTimeText = workshopDate
+      const relativeTimeText = hasWorkshopDate && workshopDate
         ? computeRelativeISTText(workshopDate, statusBadge || 'Upcoming')
-        : 'Please join the WhatsApp community for schedule details.';
+        : null;
 
       // Get latest fresh community link from constants table
       const whatsappCommunityLink =
@@ -285,8 +314,9 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         constantsObj.CREATOR_SUPPORT_EMAIL ? String(constantsObj.CREATOR_SUPPORT_EMAIL) :
         (order.notes?.creator_email || order.notes?.support_email || null);
 
-      const rawAmount = order.amount ?? 0;
-      const amount = rawAmount > 500 ? Math.round(rawAmount / 100) : rawAmount;
+      const rawAmount = typeof order.amount === 'number' ? order.amount : Number(order.amount) || 0;
+      // In Razorpay, amount is stored in paise (e.g. 100 paise = ₹1, 2100 paise = ₹21)
+      const amount = rawAmount >= 100 ? Math.round(rawAmount / 100) : rawAmount;
 
       return {
         orderId: order.orderId || order._id.toString(),
@@ -298,6 +328,9 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         domain: cleanDomain,
         amount,
         currency: order.currency || 'INR',
+        registeredAt,
+        registrationDateFormatted,
+        hasWorkshopDate,
         workshopTimeUtc: rawWorkshopTime || null,
         workshopTimeFormatted,
         relativeTimeText,

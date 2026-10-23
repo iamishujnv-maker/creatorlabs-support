@@ -76,9 +76,7 @@ function extractZoomFromMessage(messageDoc: any): string | null {
  */
 export async function getSupportOrderFlow(input: string): Promise<SupportFlowResult | null> {
   const connectedClient = await clientPromise;
-
-  const dbWorkshops = connectedClient.db('workshops');
-  const dbTest = connectedClient.db('test_workshops');
+  const db = connectedClient.db();
 
   const cleanPhone = input.replace(/\D/g, '');
   const last10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
@@ -105,24 +103,9 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
     createdAt: { $gte: sevenDaysAgo },
   };
 
-  // 1. Fetch latest paid order in last 7 days (check both workshops and test_workshops)
-  const [ordersWorkshops, ordersTest] = await Promise.all([
-    dbWorkshops.collection('orders').find(orderQuery).sort({ createdAt: -1 }).limit(1).toArray(),
-    dbTest.collection('orders').find(orderQuery).sort({ createdAt: -1 }).limit(1).toArray(),
-  ]);
-
-  let order: any = null;
-
-  if (ordersWorkshops.length > 0 && ordersTest.length > 0) {
-    order =
-      new Date(ordersWorkshops[0].createdAt) >= new Date(ordersTest[0].createdAt)
-        ? ordersWorkshops[0]
-        : ordersTest[0];
-  } else if (ordersWorkshops.length > 0) {
-    order = ordersWorkshops[0];
-  } else if (ordersTest.length > 0) {
-    order = ordersTest[0];
-  }
+  // 1. Fetch latest paid order in last 7 days strictly from the configured DB
+  const orders = await db.collection('orders').find(orderQuery).sort({ createdAt: -1 }).limit(1).toArray();
+  const order: any = orders[0] || null;
 
   if (!order) {
     return null;
@@ -147,7 +130,7 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
   let creatorSupportPhone: string | null = null;
 
   try {
-    const constantDoc = await dbWorkshops.collection('constants').findOne({
+    const constantDoc = await db.collection('constants').findOne({
       $or: [
         { site: cleanDomain },
         { site: { $regex: new RegExp(cleanDomain.replace(/\.dev\./, '.*'), 'i') } },
@@ -192,7 +175,7 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
       '+91 95882 03732';
   }
 
-  // 3. Fetch Zoom link: check ALL messages for this user (filtering by phone and domain)
+  // 3. Fetch Zoom link: check messages for this user (filtering by phone and domain)
   const phoneToSearch = order.customerPhone || order.notes?.customer_phone || input;
   const searchDigits = phoneToSearch.replace(/\D/g, '').slice(-10);
 
@@ -204,8 +187,8 @@ export async function getSupportOrderFlow(input: string): Promise<SupportFlowRes
       phoneNumber: { $regex: new RegExp(`${searchDigits}$`) },
     };
 
-    // Check ALL messages across both databases
-    for (const db of [dbTest, dbWorkshops]) {
+    // Check messages in the configured database
+    for (const targetDb of [db]) {
       try {
         const allMessages = await db
           .collection('messages')
