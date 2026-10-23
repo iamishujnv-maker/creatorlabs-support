@@ -6,8 +6,16 @@ import {
   updateWorkshop,
   updateTicketStatus,
 } from '@/lib/supabase';
+import { isAuthorizedAdmin } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedAdmin(request)) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized. Admin credentials are required.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const [registrations, workshops, tickets] = await Promise.all([
       getAllRegistrations(),
@@ -40,6 +48,13 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!isAuthorizedAdmin(request)) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized. Admin credentials are required.' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
     const { action, id, updates, status, resolutionNotes } = body;
@@ -58,7 +73,7 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     console.error('Admin PATCH error:', error);
     return NextResponse.json(
-      { error: 'Failed to update resource' },
+      { error: 'Failed to update admin data' },
       { status: 500 }
     );
   }

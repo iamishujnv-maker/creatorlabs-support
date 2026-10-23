@@ -19,6 +19,8 @@ import {
   Clock,
   ArrowLeft,
   Settings,
+  Lock,
+  LogOut,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -61,15 +63,35 @@ export default function AdminPage() {
   const [savingConfig, setSavingConfig] = useState(false);
   const [configSuccessMsg, setConfigSuccessMsg] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  // Admin Access Security Gate
+  const [adminKey, setAdminKey] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [keyInput, setKeyInput] = useState<string>('');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [verifyingKey, setVerifyingKey] = useState(false);
+
+  const fetchData = async (overrideKey?: string) => {
+    const key = overrideKey || adminKey;
+    if (!key) return;
     setLoading(true);
+    setAuthError(null);
     try {
       const [res, cfgRes] = await Promise.all([
-        fetch('/api/admin'),
-        fetch('/api/admin/config').catch(() => null),
+        fetch('/api/admin', { headers: { 'x-admin-key': key } }),
+        fetch('/api/admin/config', { headers: { 'x-admin-key': key } }).catch(() => null),
       ]);
+
+      if (res.status === 401) {
+        setIsAuthenticated(false);
+        sessionStorage.removeItem('cl_admin_key');
+        setAuthError('Invalid Admin Passkey. Access Denied.');
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('cl_admin_key', key);
         setStats(data.stats);
         setWorkshops(data.workshops);
         setRegistrations(data.registrations);
@@ -97,6 +119,23 @@ export default function AdminPage() {
     }
   };
 
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keyInput.trim()) return;
+    setVerifyingKey(true);
+    setAdminKey(keyInput.trim());
+    await fetchData(keyInput.trim());
+    setVerifyingKey(false);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('cl_admin_key');
+    setAdminKey('');
+    setIsAuthenticated(false);
+    setKeyInput('');
+    setAuthError(null);
+  };
+
   const handleSaveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
@@ -104,7 +143,10 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/config', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
         body: JSON.stringify({
           LOOKBACK_DAYS: Number(lookbackDays),
           LIVE_WINDOW_MINUTES: Number(liveWindowMinutes),
@@ -131,7 +173,12 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    const saved = typeof window !== 'undefined' ? sessionStorage.getItem('cl_admin_key') : null;
+    if (saved) {
+      setAdminKey(saved);
+      setIsAuthenticated(true);
+      fetchData(saved);
+    }
   }, []);
 
   const handleStartEdit = (ws: Workshop) => {
@@ -149,7 +196,10 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
         body: JSON.stringify({
           action: 'update_workshop',
           id: editingWorkshop.id,
@@ -176,7 +226,10 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': adminKey,
+        },
         body: JSON.stringify({
           action: 'update_ticket',
           id: ticketId,
@@ -206,6 +259,136 @@ export default function AdminPage() {
     );
   });
 
+  if (!isAuthenticated) {
+    return (
+      <>
+        <div className="page-background" />
+        <Navbar />
+        <div
+          style={{
+            minHeight: '75vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: '420px',
+              width: '100%',
+              background: '#0f172a',
+              border: '1px solid #1e293b',
+              borderRadius: '20px',
+              padding: '2.5rem 2rem',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              textAlign: 'center',
+              color: '#ffffff',
+            }}
+          >
+            <div
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: '50%',
+                background: '#2563eb',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1.25rem',
+                boxShadow: '0 0 20px rgba(37, 99, 235, 0.4)',
+              }}
+            >
+              <Lock size={26} color="#ffffff" />
+            </div>
+
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 0.5rem' }}>
+              Operations Desk Login
+            </h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.88rem', margin: '0 0 1.5rem' }}>
+              Restricted portal. Please enter your Administrator Passkey to continue.
+            </p>
+
+            {authError && (
+              <div
+                style={{
+                  background: '#450a0a',
+                  border: '1px solid #b91c1c',
+                  color: '#fca5a5',
+                  padding: '0.65rem 0.9rem',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <AlertCircle size={15} />
+                <span>{authError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <input
+                type="password"
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder="Enter Admin Passkey"
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '0.8rem 1rem',
+                  borderRadius: '10px',
+                  border: '1px solid #334155',
+                  background: '#1e293b',
+                  color: '#ffffff',
+                  fontSize: '0.95rem',
+                  outline: 'none',
+                }}
+              />
+
+              <button
+                type="submit"
+                disabled={verifyingKey || !keyInput.trim()}
+                style={{
+                  padding: '0.8rem 1.2rem',
+                  borderRadius: '10px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  cursor: verifyingKey || !keyInput.trim() ? 'not-allowed' : 'pointer',
+                  opacity: verifyingKey || !keyInput.trim() ? 0.6 : 1,
+                  transition: 'background 0.15s ease',
+                }}
+              >
+                {verifyingKey ? 'Authenticating...' : 'Unlock Portal'}
+              </button>
+            </form>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <Link
+                href="/"
+                style={{
+                  color: '#64748b',
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <ArrowLeft size={13} /> Return to Support Chat
+              </Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div className="page-background" />
@@ -234,15 +417,27 @@ export default function AdminPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={fetchData}
-            disabled={loading}
-            className="btn-secondary"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh Feed</span>
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => fetchData()}
+              disabled={loading}
+              className="btn-secondary"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh Feed</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="btn-secondary"
+              style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+              title="Sign Out of Operations Desk"
+            >
+              <LogOut size={15} />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
 
         {/* Stats Row */}

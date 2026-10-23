@@ -1372,7 +1372,7 @@ export default function SupportAssistantPage() {
                         {item.workshop.creatorSupportPhone ? (
                           <a
                             href={`https://wa.me/91${item.workshop.creatorSupportPhone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(
-                              `Hi ${item.workshop.creatorName}, I purchased your course during the workshop on ${item.workshop.domain}.\nMy registered mobile: ${item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
+                              `Hi ${item.workshop.creatorName}, I purchased your course during the workshop on ${item.workshop.domain}.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -1392,7 +1392,7 @@ export default function SupportAssistantPage() {
                             href={`mailto:${item.workshop.creatorSupportEmail}?subject=${encodeURIComponent(
                               `Course Access Request: ${item.workshop.brandName}`
                             )}&body=${encodeURIComponent(
-                              `Hi ${item.workshop.creatorName},\n\nI purchased your course during the workshop. Please grant me access.\nMy registered mobile: ${item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
+                              `Hi ${item.workshop.creatorName},\n\nI purchased your course during the workshop. Please grant me access.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
                             )}`}
                             className="btn-creator-mail"
                           >

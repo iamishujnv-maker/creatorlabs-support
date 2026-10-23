@@ -189,14 +189,33 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
       `0${last10}`,
       `+91 ${last10}`,
     ];
+    const escaped10 = last10.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     orderQuery.$or = [
       { customerPhone: { $in: phoneCandidates } },
-      { customerPhone: { $regex: new RegExp(`${last10}$`) } },
+      { customerPhone: { $regex: new RegExp(`${escaped10}$`) } },
     ];
   }
 
-  // Fetch orders strictly from the configured DB
-  const orders = await db.collection('orders').find(orderQuery).sort({ createdAt: -1 }).toArray();
+  // Fetch orders strictly with projection and max limit (defense against table scan/memory exhaustion)
+  const orders = await db
+    .collection('orders')
+    .find(orderQuery, {
+      projection: {
+        status: 1,
+        domain: 1,
+        amount: 1,
+        currency: 1,
+        createdAt: 1,
+        orderId: 1,
+        customerName: 1,
+        customerPhone: 1,
+        customerEmail: 1,
+        notes: 1,
+      },
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .toArray();
 
   // Filter out refunded
   const validOrders = orders.filter((o) => {
@@ -249,10 +268,17 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         order.notes?.creator_name ||
         'Creator';
 
-      const customerName =
+      const rawCustomerName =
         order.customerName ||
         order.notes?.customer_name ||
         'Student';
+
+      // Mask customer name for privacy (e.g. "Rahul Sharma" -> "Rahul S.")
+      let maskedCustomerName = 'Student';
+      if (rawCustomerName && rawCustomerName !== 'Student') {
+        const parts = rawCustomerName.trim().split(/\s+/);
+        maskedCustomerName = parts.length > 1 ? `${parts[0]} ${parts[1][0]}.` : parts[0];
+      }
 
       // Registration date & time in IST
       const registrationDateRaw = order.createdAt;
@@ -318,13 +344,27 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
       // In Razorpay, amount is stored in paise (e.g. 100 paise = ₹1, 2100 paise = ₹21)
       const amount = rawAmount >= 100 ? Math.round(rawAmount / 100) : rawAmount;
 
+      // Mask order ID to avoid leaking internal document IDs
+      const rawOrderId = order.orderId || order._id.toString();
+      const maskedOrderId = rawOrderId.length > 8 ? `${rawOrderId.slice(0, 4)}...${rawOrderId.slice(-4)}` : rawOrderId;
+
+      // Mask customer phone and email
+      const rawPhone = order.customerPhone || order.notes?.customer_phone || '';
+      const maskedPhone = rawPhone.length >= 10 ? `******${rawPhone.slice(-4)}` : '';
+      const rawEmail = order.customerEmail || order.notes?.customer_email || '';
+      let maskedEmail = '';
+      if (rawEmail.includes('@')) {
+        const [u, d] = rawEmail.split('@');
+        maskedEmail = `${u.slice(0, 2)}***@${d}`;
+      }
+
       return {
-        orderId: order.orderId || order._id.toString(),
+        orderId: maskedOrderId,
         brandName,
         creatorName,
-        customerName,
-        customerPhone: order.customerPhone || order.notes?.customer_phone || '',
-        customerEmail: order.customerEmail || order.notes?.customer_email || '',
+        customerName: maskedCustomerName,
+        customerPhone: maskedPhone,
+        customerEmail: maskedEmail,
         domain: cleanDomain,
         amount,
         currency: order.currency || 'INR',
@@ -391,8 +431,11 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         }
       }
 
+      const rawAttOrderId = att.orderId || att._id.toString();
+      const maskedAttOrderId = rawAttOrderId.length > 8 ? `${rawAttOrderId.slice(0, 4)}...${rawAttOrderId.slice(-4)}` : rawAttOrderId;
+
       return {
-        orderId: att.orderId || att._id.toString(),
+        orderId: maskedAttOrderId,
         brandName,
         domain: cleanDomain,
         amount,
