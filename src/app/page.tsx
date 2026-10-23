@@ -988,9 +988,12 @@ export default function SupportAssistantPage() {
                               onClick={() => handleSelectWorkshop(item.id, ws)}
                               className="zomato-option-row"
                             >
-                              <div style={{ textAlign: 'left' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{ws.brandName}</span>
+                              {/* Top Row: Brand name, Amount pill, and Status Badge aligned together on left, Arrow on right */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0 }}>
+                                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '13.5px' }}>
+                                    {ws.brandName}
+                                  </span>
                                   <span
                                     style={{
                                       fontSize: '11px',
@@ -1000,12 +1003,33 @@ export default function SupportAssistantPage() {
                                       border: '1px solid #bbf7d0',
                                       padding: '1px 6px',
                                       borderRadius: '4px',
+                                      flexShrink: 0,
                                     }}
                                   >
                                     ₹{ws.amount}
                                   </span>
+                                  {ws.hasWorkshopDate && ws.statusBadge === 'Upcoming' && (
+                                    <span className="badge-upcoming">Upcoming</span>
+                                  )}
+                                  {ws.hasWorkshopDate && ws.statusBadge === 'Live now' && (
+                                    <span className="badge-live">
+                                      <span className="live-badge-dot" />
+                                      Live
+                                    </span>
+                                  )}
+                                  {ws.hasWorkshopDate && ws.statusBadge === 'Completed' && (
+                                    <span className="badge-completed">
+                                      <Check size={11} />
+                                      Completed
+                                    </span>
+                                  )}
                                 </div>
-                                <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: 3 }}>
+                                <ChevronRight size={15} style={{ color: '#94a3b8', flexShrink: 0 }} />
+                              </div>
+
+                              {/* Dates Section: Both dates take 100% width, never wrapping awkwardly */}
+                              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <div style={{ fontSize: '11.5px', color: '#64748b', width: '100%', lineHeight: 1.4 }}>
                                   Registered on: {ws.registrationDateFormatted}
                                 </div>
                                 {ws.hasWorkshopDate && ws.workshopTimeFormatted && (
@@ -1013,32 +1037,17 @@ export default function SupportAssistantPage() {
                                     style={{
                                       fontSize: '11.5px',
                                       color: '#2563eb',
-                                      marginTop: 2,
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: 4,
+                                      width: '100%',
+                                      lineHeight: 1.4,
                                     }}
                                   >
-                                    <Calendar size={12} />
+                                    <Calendar size={12} style={{ flexShrink: 0 }} />
                                     <span>Workshop: {ws.workshopTimeFormatted}</span>
                                   </div>
                                 )}
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                {ws.statusBadge === 'Upcoming' && <span className="badge-upcoming">Upcoming</span>}
-                                {ws.statusBadge === 'Live now' && (
-                                  <span className="badge-live">
-                                    <span className="live-badge-dot" />
-                                    Live
-                                  </span>
-                                )}
-                                {ws.statusBadge === 'Completed' && (
-                                  <span className="badge-completed">
-                                    <Check size={11} />
-                                    Completed
-                                  </span>
-                                )}
-                                <ChevronRight size={15} style={{ color: '#94a3b8' }} />
                               </div>
                             </button>
                           ))}
@@ -1616,7 +1625,13 @@ export default function SupportAssistantPage() {
                     : '10-digit mobile or email ID'
                 }
                 className="bottom-text-input"
-                autoFocus
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                onFocus={() => {
+                  scrollToBottom();
+                }}
               />
 
               <button

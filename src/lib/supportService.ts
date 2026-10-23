@@ -73,6 +73,7 @@ function formatWorkshopTimeIST(date: Date): string {
     const dayName = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'short' }).format(date);
     const dayNum = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' }).format(date);
     const month = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', month: 'short' }).format(date);
+    const year = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' }).format(date);
     const timeStr = new Intl.DateTimeFormat('en-IN', {
       timeZone: 'Asia/Kolkata',
       hour: 'numeric',
@@ -80,7 +81,7 @@ function formatWorkshopTimeIST(date: Date): string {
       hour12: true,
     }).format(date).toUpperCase();
 
-    return `${dayName}, ${dayNum} ${month} · ${timeStr}`;
+    return `${dayName}, ${dayNum} ${month} ${year} · ${timeStr}`;
   } catch (err) {
     return date.toLocaleString();
   }
@@ -135,9 +136,10 @@ function computeRelativeISTText(workshopDate: Date, status: 'Upcoming' | 'Live n
 
     const weekdayFull = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', weekday: 'long' }).format(workshopDate);
     const dayMonth = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' }).format(workshopDate);
+    const year = new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' }).format(workshopDate);
 
     if (status === 'Completed') {
-      return `This workshop took place on ${weekdayFull}, ${dayMonth}.`;
+      return `This workshop took place on ${weekdayFull}, ${dayMonth} ${year}.`;
     }
 
     if (dayDiff === 0) {
@@ -147,7 +149,7 @@ function computeRelativeISTText(workshopDate: Date, status: 'Upcoming' | 'Live n
     } else if (dayDiff > 1 && dayDiff <= 6) {
       return `Your workshop is this ${weekdayFull}, ${dayMonth} at ${timeStr}.`;
     } else {
-      return `Your workshop is on ${weekdayFull}, ${dayMonth} at ${timeStr}.`;
+      return `Your workshop is on ${weekdayFull}, ${dayMonth} ${year} at ${timeStr}.`;
     }
   } catch (err) {
     return `Your workshop is scheduled for ${formatWorkshopTimeIST(workshopDate)}.`;
@@ -312,7 +314,7 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         }
       }
 
-      if (!statusBadge) {
+      if (!hasWorkshopDate || !statusBadge) {
         statusBadge = null;
         statusCategory = 'UPCOMING';
       }
