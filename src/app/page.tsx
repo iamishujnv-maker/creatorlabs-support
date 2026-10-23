@@ -1340,13 +1340,6 @@ export default function SupportAssistantPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleIssueSelect(item.id, 'RECORDING_REQUEST', 'I want recording of the session')}
-                                className="zomato-option-row"
-                              >
-                                <span>I want recording of the session</span>
-                              </button>
-                              <button
-                                type="button"
                                 onClick={() => handleIssueSelect(item.id, 'CHANGE_TIMING', 'Can I change my workshop timing or batch?')}
                                 className="zomato-option-row"
                               >
