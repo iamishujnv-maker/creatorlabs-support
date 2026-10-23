@@ -1,38 +1,78 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupportOrderFlow } from '@/lib/mongodb';
+import { lookupSupportAttendee } from '@/lib/supportService';
+
+// Simple in-memory sliding window rate limiter
+const ipRequests = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 20;
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const timestamps = ipRequests.get(ip) || [];
+  const recent = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+
+  if (recent.length >= MAX_REQUESTS_PER_WINDOW) {
+    return true;
+  }
+
+  recent.push(now);
+  ipRequests.set(ip, recent);
+
+  // Periodically clean up old IPs
+  if (ipRequests.size > 1000) {
+    for (const [k, v] of ipRequests.entries()) {
+      if (v.every((t) => now - t >= RATE_LIMIT_WINDOW_MS)) {
+        ipRequests.delete(k);
+      }
+    }
+  }
+
+  return false;
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown-ip';
+
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Too many requests. Please wait a moment before trying again.',
+        },
+        { status: 429 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('query');
 
     if (!query || query.trim().length < 3) {
       return NextResponse.json(
-        { error: 'Please enter a valid phone number or email address.' },
+        {
+          success: false,
+          error: 'Please enter a valid phone number or email address.',
+        },
         { status: 400 }
       );
     }
 
-    const flowData = await getSupportOrderFlow(query);
-
-    if (!flowData) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No paid registration found in the last 7 days for this phone number or email. Please check your details or contact support.',
-        },
-        { status: 404 }
-      );
-    }
+    const result = await lookupSupportAttendee(query);
 
     return NextResponse.json({
       success: true,
-      data: flowData,
+      result,
     });
   } catch (error) {
     console.error('Lookup API error:', error);
     return NextResponse.json(
-      { error: 'Server error while checking your registration details.' },
+      {
+        success: false,
+        error: 'Server error while checking your registration details.',
+      },
       { status: 500 }
     );
   }
