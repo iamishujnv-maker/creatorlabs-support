@@ -23,6 +23,7 @@ import {
   CreditCard,
   RotateCcw,
   ArrowUp,
+  Phone,
 } from 'lucide-react';
 import {
   PaidWorkshopItem,
@@ -38,6 +39,7 @@ type Step =
   | 'ISSUE_SELECT'
   | 'RESOLUTION_CTA'
   | 'RESOLUTION_NO_CTA'
+  | 'RECORDING_POLICY'
   | 'CREATOR_CONTACT'
   | 'ATTEMPTED_LIST'
   | 'NOT_FOUND_FIRST'
@@ -102,8 +104,15 @@ export type ChatFeedItem =
     }
   | {
       id: string;
+      kind: 'recording_policy';
+      workshop: PaidWorkshopItem;
+      answered?: boolean | null;
+    }
+  | {
+      id: string;
       kind: 'creator_contact';
       workshop: PaidWorkshopItem;
+      title?: string;
       answered?: boolean | 'yes' | 'no' | null;
     }
   | {
@@ -582,13 +591,26 @@ export default function SupportAssistantPage() {
             id: `res-${Date.now()}`,
             kind: 'resolution_no_cta',
             messages: [
-              'We understand your concern. However, as per our policy, all workshop fees are non-refundable once registered.',
-              `${selectedWorkshop.creatorName} sometimes accommodates participants with session recordings or a seat in the next batch. You can reach out to them directly.`,
+              `You have registered for ${selectedWorkshop.brandName}${selectedWorkshop.domain ? ` (${selectedWorkshop.domain})` : ''} for ₹${selectedWorkshop.amount}. And this is non-refundable.`,
             ],
             workshop: selectedWorkshop,
           },
         ]);
         setStep('RESOLUTION_NO_CTA');
+        break;
+
+      case 'RECORDING_REQUEST':
+        setChatFeed((prev) => [
+          ...prev,
+          { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
+          {
+            id: `rec-${Date.now()}`,
+            kind: 'recording_policy',
+            workshop: selectedWorkshop,
+            answered: false,
+          },
+        ]);
+        setStep('RECORDING_POLICY');
         break;
 
       case 'COURSE_ACCESS':
@@ -612,6 +634,61 @@ export default function SupportAssistantPage() {
         ]);
         triggerEscalation(issueLabel);
         break;
+    }
+  };
+
+  // Follow-up handler for recording requests
+  const handleRecordingFollowUp = (
+    feedItemId: string,
+    action: 'creator_promised' | 'understood'
+  ) => {
+    if (!selectedWorkshop) return;
+    const timeNow = getCurrentTime();
+
+    setChatFeed((prev) =>
+      prev.map((item) =>
+        item.id === feedItemId && item.kind === 'recording_policy'
+          ? { ...item, answered: true }
+          : item
+      )
+    );
+
+    if (action === 'creator_promised') {
+      setChatFeed((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          kind: 'user_message',
+          text: 'The creator told me that recording will be provided',
+          time: timeNow,
+        },
+        {
+          id: `creator-${Date.now()}`,
+          kind: 'creator_contact',
+          workshop: selectedWorkshop,
+          title: `If that's the case, please contact ${selectedWorkshop.creatorName} directly. Here are their contact details:`,
+        },
+      ]);
+      setStep('CREATOR_CONTACT');
+    } else {
+      setChatFeed((prev) => [
+        ...prev,
+        {
+          id: `user-${Date.now()}`,
+          kind: 'user_message',
+          text: 'Understood, thank you',
+          time: timeNow,
+        },
+        {
+          id: `res-${Date.now()}`,
+          kind: 'resolution_no_cta',
+          messages: [
+            'Understood! Please let us know if you have any other questions regarding your workshop.',
+          ],
+          workshop: selectedWorkshop,
+        },
+      ]);
+      setStep('RESOLUTION_NO_CTA');
     }
   };
 
@@ -1195,6 +1272,13 @@ export default function SupportAssistantPage() {
                             <>
                               <button
                                 type="button"
+                                onClick={() => handleIssueSelect(item.id, 'RECORDING_REQUEST', 'I want recording of the session')}
+                                className="zomato-option-row"
+                              >
+                                <span>I want recording of the session</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleIssueSelect(item.id, 'MISSED_WORKSHOP', 'I missed / couldn’t attend the workshop')}
                                 className="zomato-option-row"
                               >
@@ -1202,10 +1286,10 @@ export default function SupportAssistantPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleIssueSelect(item.id, 'WANT_REFUND', 'I want a refund')}
+                                onClick={() => handleIssueSelect(item.id, 'WANT_REFUND', 'I want the refund for the workshop payment')}
                                 className="zomato-option-row"
                               >
-                                <span>I want a refund</span>
+                                <span>I want the refund for the workshop payment</span>
                               </button>
                               <button
                                 type="button"
@@ -1244,10 +1328,24 @@ export default function SupportAssistantPage() {
                               </button>
                               <button
                                 type="button"
+                                onClick={() => handleIssueSelect(item.id, 'RECORDING_REQUEST', 'I want recording of the session')}
+                                className="zomato-option-row"
+                              >
+                                <span>I want recording of the session</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleIssueSelect(item.id, 'CHANGE_TIMING', 'Can I change my workshop timing or batch?')}
                                 className="zomato-option-row"
                               >
                                 <span>Can I change my workshop timing or batch?</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'WANT_REFUND', 'I want the refund for the workshop payment')}
+                                className="zomato-option-row"
+                              >
+                                <span>I want the refund for the workshop payment</span>
                               </button>
                               <button
                                 type="button"
@@ -1355,13 +1453,56 @@ export default function SupportAssistantPage() {
                   </div>
                 );
 
+              case 'recording_policy':
+                return (
+                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="chat-row-bot">
+                      <div className="chat-bubble-stack">
+                        <div className="chat-bubble-bot">
+                          We cannot provide the recordings of the session. It is subject to creator&apos;s whether they want to share recording or not.
+                        </div>
+                      </div>
+                    </div>
+
+                    {!item.answered && (
+                      <div className="chat-row-bot" style={{ marginTop: 2 }}>
+                        <div className="zomato-chat-card">
+                          <div className="zomato-card-header">
+                            <div className="zomato-card-prompt">
+                              Did the creator mention recording would be provided?
+                            </div>
+                            <span className="zomato-card-time">{getCurrentTime()}</span>
+                          </div>
+                          <div className="zomato-options-list">
+                            <button
+                              type="button"
+                              onClick={() => handleRecordingFollowUp(item.id, 'creator_promised')}
+                              className="zomato-option-row"
+                            >
+                              <span>The creator told me that recording will be provided</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRecordingFollowUp(item.id, 'understood')}
+                              className="zomato-option-row"
+                            >
+                              <span>Understood, thank you</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+
               case 'creator_contact':
                 return (
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
                         <div className="chat-bubble-bot">
-                          Course access is managed directly by {item.workshop.creatorName}. You can reach out directly via WhatsApp or Email below:
+                          {item.title ||
+                            `Course access is managed directly by ${item.workshop.creatorName}. You can reach out directly via WhatsApp or Email below:`}
                         </div>
                       </div>
                     </div>
@@ -1377,11 +1518,46 @@ export default function SupportAssistantPage() {
                         </div>
                       </div>
 
+                      {/* Display Creator Phone & Email text clearly */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          fontSize: '12.5px',
+                          color: '#334155',
+                          background: '#f8fafc',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Phone size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+                          <span>
+                            <strong>Phone / WhatsApp:</strong>{' '}
+                            {item.workshop.creatorSupportPhone
+                              ? `+91 ${item.workshop.creatorSupportPhone}`
+                              : 'Shared via WhatsApp'}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Mail size={14} style={{ color: '#2563eb', flexShrink: 0 }} />
+                          <span>
+                            <strong>Email:</strong>{' '}
+                            {item.workshop.creatorSupportEmail ||
+                              (item.workshop.domain
+                                ? `support@${item.workshop.domain.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`
+                                : 'support@creatorlabs.in')}
+                          </span>
+                        </div>
+                      </div>
+
                       <div className="creator-actions-row">
                         {item.workshop.creatorSupportPhone ? (
                           <a
                             href={`https://wa.me/91${item.workshop.creatorSupportPhone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(
-                              `Hi ${item.workshop.creatorName}, I purchased your course during the workshop on ${item.workshop.domain}.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
+                              `Hi ${item.workshop.creatorName}, I attended your workshop ${item.workshop.brandName} on ${item.workshop.domain}.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
                             )}`}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -1399,9 +1575,9 @@ export default function SupportAssistantPage() {
                         {item.workshop.creatorSupportEmail ? (
                           <a
                             href={`mailto:${item.workshop.creatorSupportEmail}?subject=${encodeURIComponent(
-                              `Course Access Request: ${item.workshop.brandName}`
+                              `Workshop Query: ${item.workshop.brandName}`
                             )}&body=${encodeURIComponent(
-                              `Hi ${item.workshop.creatorName},\n\nI purchased your course during the workshop. Please grant me access.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
+                              `Hi ${item.workshop.creatorName},\n\nI attended your workshop ${item.workshop.brandName} on ${item.workshop.domain}.\nMy registered mobile: ${currentQuery || item.workshop.customerPhone}\nOrder ID: ${item.workshop.orderId}`
                             )}`}
                             className="btn-creator-mail"
                           >
@@ -1416,7 +1592,7 @@ export default function SupportAssistantPage() {
                       </div>
 
                       <div className="creator-note-subtext">
-                        Tip: Mention your registered mobile number and payment details so {item.workshop.creatorName} can grant you access faster.
+                        Tip: Mention your registered mobile number and payment details so {item.workshop.creatorName} can assist you faster.
                       </div>
                     </div>
 
