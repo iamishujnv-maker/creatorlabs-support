@@ -551,17 +551,14 @@ export default function SupportAssistantPage() {
           { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
           {
             id: `res-${Date.now()}`,
-            kind: 'resolution_cta',
+            kind: 'resolution_no_cta',
             messages: [
               'We’re sorry, but workshop dates and timings cannot be changed or rescheduled once booked.',
-              'However, please stay connected in the WhatsApp community so you don’t miss any updates or upcoming session announcements.',
             ],
-            ctaLink: communityLink,
-            ctaText: 'Join WhatsApp Community',
-            answered: null,
+            workshop: selectedWorkshop,
           },
         ]);
-        setStep('RESOLUTION_CTA');
+        setStep('RESOLUTION_NO_CTA');
         break;
 
       case 'MISSED_WORKSHOP':
@@ -1455,43 +1452,34 @@ export default function SupportAssistantPage() {
 
               case 'recording_policy':
                 return (
-                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div className="chat-row-bot">
-                      <div className="chat-bubble-stack">
-                        <div className="chat-bubble-bot">
+                  <div key={item.id} className="chat-row-bot">
+                    <div className="zomato-chat-card">
+                      <div className="zomato-card-header">
+                        <div className="zomato-card-prompt">
                           We cannot provide the recordings of the session. It is subject to creator&apos;s whether they want to share recording or not.
                         </div>
+                        <span className="zomato-card-time">{getCurrentTime()}</span>
                       </div>
-                    </div>
 
-                    {!item.answered && (
-                      <div className="chat-row-bot" style={{ marginTop: 2 }}>
-                        <div className="zomato-chat-card">
-                          <div className="zomato-card-header">
-                            <div className="zomato-card-prompt">
-                              Did the creator mention recording would be provided?
-                            </div>
-                            <span className="zomato-card-time">{getCurrentTime()}</span>
-                          </div>
-                          <div className="zomato-options-list">
-                            <button
-                              type="button"
-                              onClick={() => handleRecordingFollowUp(item.id, 'creator_promised')}
-                              className="zomato-option-row"
-                            >
-                              <span>The creator told me that recording will be provided</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRecordingFollowUp(item.id, 'understood')}
-                              className="zomato-option-row"
-                            >
-                              <span>Understood, thank you</span>
-                            </button>
-                          </div>
+                      {!item.answered && (
+                        <div className="zomato-options-list">
+                          <button
+                            type="button"
+                            onClick={() => handleRecordingFollowUp(item.id, 'understood')}
+                            className="zomato-option-row"
+                          >
+                            <span>Understood, thank you</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRecordingFollowUp(item.id, 'creator_promised')}
+                            className="zomato-option-row"
+                          >
+                            <span>The creator told me that recording will be provided</span>
+                          </button>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
 
