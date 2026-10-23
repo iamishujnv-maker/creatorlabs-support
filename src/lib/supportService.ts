@@ -22,6 +22,8 @@ export interface PaidWorkshopItem {
   whatsappCommunityLink: string | null;
   creatorSupportPhone: string | null;
   creatorSupportEmail: string | null;
+  nextWorkshopDate?: string | null;
+  nextWorkshopTime?: string | null;
 }
 
 export interface AttemptedWorkshopItem {
@@ -234,11 +236,27 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
 
   if (uniqueDomains.length > 0) {
     const cleanList = uniqueDomains.map((d: string) => d.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+    const subdomains = cleanList.map((d: string) => d.split('.')[0]).filter(Boolean);
     try {
-      const constantsDocs = await db
+      let constantsDocs = await db
         .collection('constants')
         .find({ site: { $in: cleanList } })
         .toArray();
+
+      if (constantsDocs.length === 0) {
+        try {
+          constantsDocs = await connectedClient
+            .db('workshops')
+            .collection('constants')
+            .find({
+              $or: [
+                { site: { $in: cleanList } },
+                ...subdomains.map((sub: string) => ({ site: new RegExp(`^${sub}`, 'i') })),
+              ],
+            })
+            .toArray();
+        } catch (_) {}
+      }
 
       for (const doc of constantsDocs) {
         constantsMap.set(doc.site, doc.constants || {});
@@ -256,7 +274,17 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
     const workshops: PaidWorkshopItem[] = paidOrders.map((order) => {
       const rawDomain = order.domain || order.notes?.domain || '';
       const cleanDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-      const constantsObj = constantsMap.get(cleanDomain) || {};
+      let constantsObj = constantsMap.get(cleanDomain);
+      if (!constantsObj) {
+        const sub = cleanDomain.split('.')[0];
+        for (const [s, c] of constantsMap.entries()) {
+          if (s.startsWith(sub) || s.includes(sub)) {
+            constantsObj = c;
+            break;
+          }
+        }
+      }
+      constantsObj = constantsObj || {};
 
       const brandName =
         constantsObj.BRAND_NAME ||
@@ -342,6 +370,9 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         constantsObj.CREATOR_SUPPORT_EMAIL ? String(constantsObj.CREATOR_SUPPORT_EMAIL) :
         (order.notes?.creator_email || order.notes?.support_email || null);
 
+      const nextWorkshopDate = constantsObj.WORKSHOP_DATE ? String(constantsObj.WORKSHOP_DATE) : null;
+      const nextWorkshopTime = constantsObj.WORKSHOP_TIME ? String(constantsObj.WORKSHOP_TIME) : null;
+
       const rawAmount = typeof order.amount === 'number' ? order.amount : Number(order.amount) || 0;
       // In Razorpay, amount is stored in paise (e.g. 100 paise = ₹1, 2100 paise = ₹21)
       const amount = rawAmount >= 100 ? Math.round(rawAmount / 100) : rawAmount;
@@ -381,6 +412,8 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         whatsappCommunityLink,
         creatorSupportPhone,
         creatorSupportEmail,
+        nextWorkshopDate,
+        nextWorkshopTime,
       };
     });
 

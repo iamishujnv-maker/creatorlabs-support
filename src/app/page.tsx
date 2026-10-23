@@ -563,17 +563,25 @@ export default function SupportAssistantPage() {
         setStep('RESOLUTION_CTA');
         break;
 
-      case 'MISSED_WORKSHOP':
+      case 'MISSED_WORKSHOP': {
+        const nextDate = selectedWorkshop.nextWorkshopDate;
+        const nextTime = selectedWorkshop.nextWorkshopTime;
+        let schedulePrefix = '';
+        if (nextDate && nextTime) {
+          schedulePrefix = `The next workshop is scheduled on ${nextDate} at ${nextTime}. `;
+        } else if (nextDate) {
+          schedulePrefix = `The next workshop is scheduled on ${nextDate}. `;
+        }
+
+        const messageText = `${schedulePrefix}This is the community link for the next workshop, please join this. If you are already part of this, thank you!`;
+
         setChatFeed((prev) => [
           ...prev,
           { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
           {
             id: `res-${Date.now()}`,
             kind: 'resolution_cta',
-            messages: [
-              'Don’t worry if you couldn’t attend the live session!',
-              'Please join the WhatsApp community below to receive workshop highlights, study materials, and details about the next upcoming batch.',
-            ],
+            messages: [messageText],
             ctaLink: communityLink,
             ctaText: 'Join WhatsApp Community',
             answered: null,
@@ -581,6 +589,7 @@ export default function SupportAssistantPage() {
         ]);
         setStep('RESOLUTION_CTA');
         break;
+      }
 
       case 'WANT_REFUND':
         setChatFeed((prev) => [
@@ -588,14 +597,16 @@ export default function SupportAssistantPage() {
           { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
           {
             id: `res-${Date.now()}`,
-            kind: 'resolution_no_cta',
+            kind: 'resolution_cta',
             messages: [
               `You have registered for ${selectedWorkshop.brandName}${selectedWorkshop.domain ? ` (${selectedWorkshop.domain})` : ''} for ₹${selectedWorkshop.amount}. And this is non-refundable.`,
             ],
-            workshop: selectedWorkshop,
+            ctaLink: null,
+            ctaText: '',
+            answered: null,
           },
         ]);
-        setStep('RESOLUTION_NO_CTA');
+        setStep('RESOLUTION_CTA');
         break;
 
       case 'RECORDING_REQUEST':
