@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupSupportAttendee } from '@/lib/supportService';
+import { checkDistributedRateLimit, getCachedData, setCachedData } from '@/lib/redis';
 
 // Sliding window rate limiter (Defense-in-depth: max 5 lookups per IP per minute)
 const ipRequests = new Map<string, number[]>();
@@ -63,13 +64,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Client IP extraction & Rate limiting
+    // 2. Client IP extraction & Distributed Rate limiting
     const ip =
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
       request.headers.get('x-real-ip') ||
       'unknown-ip';
 
-    if (isRateLimited(ip)) {
+    const rateLimit = await checkDistributedRateLimit(ip, 5, 60);
+    if (!rateLimit.allowed || isRateLimited(ip)) {
       return NextResponse.json(
         {
           success: false,
@@ -128,8 +130,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 4. Secure lookup
+    // 4. Secure lookup with Redis caching
+    const cacheKey = `lookup:${query.toLowerCase()}`;
+    const cachedResult = await getCachedData<any>(cacheKey);
+    if (cachedResult) {
+      return NextResponse.json(
+        {
+          success: true,
+          result: cachedResult,
+        },
+        {
+          headers: {
+            'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+            'X-Content-Type-Options': 'nosniff',
+          },
+        }
+      );
+    }
+
     const result = await lookupSupportAttendee(query);
+
+    // Cache successful attendee lookups for 60 seconds
+    if (result && result.caseType !== 'CASE_C') {
+      await setCachedData(cacheKey, result, 60);
+    }
 
     return NextResponse.json(
       {
