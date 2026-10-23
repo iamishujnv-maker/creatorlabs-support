@@ -551,14 +551,16 @@ export default function SupportAssistantPage() {
           { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
           {
             id: `res-${Date.now()}`,
-            kind: 'resolution_no_cta',
+            kind: 'resolution_cta',
             messages: [
               'We’re sorry, but workshop dates and timings cannot be changed or rescheduled once booked.',
             ],
-            workshop: selectedWorkshop,
+            ctaLink: null,
+            ctaText: '',
+            answered: null,
           },
         ]);
-        setStep('RESOLUTION_NO_CTA');
+        setStep('RESOLUTION_CTA');
         break;
 
       case 'MISSED_WORKSHOP':
@@ -678,14 +680,16 @@ export default function SupportAssistantPage() {
         },
         {
           id: `res-${Date.now()}`,
-          kind: 'resolution_no_cta',
+          kind: 'resolution_cta',
           messages: [
-            'Understood! Please let us know if you have any other questions regarding your workshop.',
+            'Understood! Please let us know if you need anything else.',
           ],
-          workshop: selectedWorkshop,
+          ctaLink: null,
+          ctaText: '',
+          answered: null,
         },
       ]);
-      setStep('RESOLUTION_NO_CTA');
+      setStep('RESOLUTION_CTA');
     }
   };
 
