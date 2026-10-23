@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lookupSupportAttendee } from '@/lib/supportService';
-import { checkDistributedRateLimit, getCachedData, setCachedData } from '@/lib/redis';
+import {
+  checkDistributedRateLimit,
+  checkDailyGlobalLimit,
+  getTrustedClientIp,
+  getCachedData,
+  setCachedData,
+} from '@/lib/redis';
 
 // Sliding window rate limiter (Defense-in-depth: max 5 lookups per IP per minute)
 const ipRequests = new Map<string, number[]>();
@@ -64,11 +70,27 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. Client IP extraction & Distributed Rate limiting
-    const ip =
-      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-      request.headers.get('x-real-ip') ||
-      'unknown-ip';
+    // 1b. Global Daily Limit (Max 1,000 lookup queries per day system-wide)
+    const dailyGlobal = await checkDailyGlobalLimit(1000);
+    if (!dailyGlobal.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Daily system lookup limit reached (maximum 1,000 queries per day). Please contact our support team directly on WhatsApp.',
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '86400',
+            'Cache-Control': 'no-store, no-cache, must-revalidate',
+          },
+        }
+      );
+    }
+
+    // 2. Client IP extraction & Distributed Rate limiting (resisting header spoofing)
+    const ip = getTrustedClientIp(request);
 
     const rateLimit = await checkDistributedRateLimit(ip, 5, 60);
     if (!rateLimit.allowed || isRateLimited(ip)) {
