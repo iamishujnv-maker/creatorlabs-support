@@ -170,20 +170,26 @@
 }
 
 .chat-reset-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 5px 9px;
   border-radius: 6px;
   transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .chat-reset-btn:hover {
   background: #f1f5f9;
-  color: #475569;
+  border-color: #cbd5e1;
+  color: #0f172a;
 }
 
 /* Scroll Area */

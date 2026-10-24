@@ -315,8 +315,12 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
       const registeredAt = registrationDateRaw ? new Date(registrationDateRaw).toISOString() : '';
       const registrationDateFormatted = formatRegistrationDateIST(registrationDateRaw);
 
-      // Parse workshop start time (W) from notes.workshopTimeUtc
-      const rawWorkshopTime = order.notes?.workshopTimeUtc;
+      // Parse workshop start time (W) from notes.workshopTimeUtc or fallbacks
+      const rawWorkshopTime =
+        order.notes?.workshopTimeUtc ||
+        order.notes?.workshop_time ||
+        order.notes?.workshopTime ||
+        order.workshopTimeUtc;
       let workshopDate: Date | null = null;
       let statusBadge: 'Upcoming' | 'Live now' | 'Completed' | null = null;
       let statusCategory: 'UPCOMING' | 'LIVE_NOW' | 'COMPLETED' = 'UPCOMING';

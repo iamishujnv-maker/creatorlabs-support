@@ -919,17 +919,15 @@ export default function SupportAssistantPage() {
             </div>
           </div>
 
-          {(step !== 'WELCOME' || chatFeed.length > 1) && (
-            <button
-              type="button"
-              onClick={handleReset}
-              className="chat-reset-btn"
-              title="Start over"
-            >
-              <RotateCcw size={14} style={{ display: 'inline', marginRight: 4 }} />
-              <span>Reset</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleReset}
+            className="chat-reset-btn"
+            title="Restart Chat"
+          >
+            <RotateCcw size={13} />
+            <span>Restart Chat</span>
+          </button>
         </header>
 
         {/* Chat Scroll Area (Unified Chat Message Stream) */}
@@ -1280,7 +1278,70 @@ export default function SupportAssistantPage() {
 
                       {!item.answered && (
                         <div className="zomato-options-list">
-                          {item.workshop.statusCategory === 'COMPLETED' ? (
+                          {!item.workshop.hasWorkshopDate ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'ZOOM_LINK', 'Where can I get the Zoom link?')}
+                                className="zomato-option-row"
+                              >
+                                <span>Where can I get the Zoom link?</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'WA_COMMUNITY', 'I need the WhatsApp community link')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>I need the WhatsApp community link</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'CHANGE_TIMING', 'Can I change my workshop timing or batch?')}
+                                className="zomato-option-row"
+                              >
+                                <span>Can I change my workshop timing or batch?</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'RECORDING_REQUEST', 'I want recording of the session')}
+                                className="zomato-option-row"
+                              >
+                                <span>I want recording of the session</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'MISSED_WORKSHOP', 'I missed / couldn’t attend the workshop')}
+                                className="zomato-option-row"
+                              >
+                                <span>I missed / couldn’t attend the workshop</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'COURSE_ACCESS', 'I bought a course in the workshop but didn’t get access')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>I bought a course in the workshop but didn’t get access</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'WANT_REFUND', 'I want the refund for the workshop payment')}
+                                className="zomato-option-row"
+                              >
+                                <span>I want the refund for the workshop payment</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleIssueSelect(item.id, 'SOMETHING_ELSE', 'I have another question')}
+                                className="zomato-option-row"
+                              >
+                                <span>I have another question</span>
+                              </button>
+                            </>
+                          ) : item.workshop.statusCategory === 'COMPLETED' ? (
                             <>
                               <button
                                 type="button"
@@ -1445,14 +1506,6 @@ export default function SupportAssistantPage() {
                       >
                         <User size={16} className="chip-icon" />
                         <span>Contact the creator</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="chip-btn"
-                      >
-                        <RotateCcw size={16} className="chip-icon" />
-                        <span>Restart</span>
                       </button>
                     </div>
                   </div>
@@ -1683,8 +1736,8 @@ export default function SupportAssistantPage() {
                       <span className="whatsapp-cta-subtext">Creator Labs Workshops Support</span>
                     </div>
 
-                    <div className="chips-container" style={{ marginTop: 6 }}>
-                      {workshops.length > 1 && (
+                    {workshops.length > 1 && (
+                      <div className="chips-container" style={{ marginTop: 6 }}>
                         <button
                           type="button"
                           onClick={handleCheckOtherWorkshops}
@@ -1693,16 +1746,8 @@ export default function SupportAssistantPage() {
                           <Plus size={16} className="chip-icon" />
                           <span>Check my other workshops</span>
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="chip-btn"
-                      >
-                        <RotateCcw size={16} className="chip-icon" />
-                        <span>Restart</span>
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
 
@@ -1720,8 +1765,8 @@ export default function SupportAssistantPage() {
                       </div>
                     </div>
 
-                    <div className="chips-container" style={{ marginTop: 6 }}>
-                      {workshops.length > 1 && (
+                    {workshops.length > 1 && (
+                      <div className="chips-container" style={{ marginTop: 6 }}>
                         <button
                           type="button"
                           onClick={handleCheckOtherWorkshops}
@@ -1730,16 +1775,8 @@ export default function SupportAssistantPage() {
                           <Plus size={16} className="chip-icon" />
                           <span>Check my other workshops</span>
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleReset}
-                        className="chip-btn"
-                      >
-                        <RotateCcw size={16} className="chip-icon" />
-                        <span>Restart</span>
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
 
@@ -1817,25 +1854,10 @@ export default function SupportAssistantPage() {
               </button>
             </div>
 
-            {step === 'WELCOME' ? (
-              <div className="bottom-footnote-row">
-                <Lock size={12} />
-                <span>Only used to find your booking. We never ask for OTP.</span>
-              </div>
-            ) : (
-              <div className="bottom-escalate-text">
-                Still can’t find it?{' '}
-                <a
-                  href={`https://wa.me/${centralWhatsApp}?text=${encodeURIComponent(
-                    `Hi, I need help. I couldn't find my registration. My ${isEmailLookup ? 'email' : 'phone'}: ${currentQuery}`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Message us on WhatsApp
-                </a>
-              </div>
-            )}
+            <div className="bottom-footnote-row">
+              <Lock size={12} />
+              <span>Only used to find your booking. We never ask for OTP.</span>
+            </div>
           </footer>
         )}
       </div>
