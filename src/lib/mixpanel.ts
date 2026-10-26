@@ -6,6 +6,8 @@ const MIXPANEL_TOKEN =
   process.env.NEXT_PUBLIC_MIXPANEL_TOKEN || '3fb07e2aa9352378720b817e9c5f3df6';
 
 let isInitialized = false;
+let activeIdentifier: string | null = null;
+let activeIdentifierType: 'phone' | 'email' | null = null;
 
 export function initMixpanel(): void {
   if (typeof window === 'undefined' || isInitialized) return;
@@ -25,6 +27,50 @@ export function initMixpanel(): void {
   }
 }
 
+/**
+ * Register user identifier (phone or email) as Mixpanel Super Properties & User Profile
+ * This guarantees the phone/email is automatically attached to EVERY subsequent event
+ */
+export function setUserIdentifier(identifier: string, isEmail: boolean): void {
+  if (typeof window === 'undefined') return;
+
+  if (!isInitialized) {
+    initMixpanel();
+  }
+
+  activeIdentifier = identifier;
+  activeIdentifierType = isEmail ? 'email' : 'phone';
+
+  try {
+    // 1. Identify distinct user
+    mixpanel.identify(identifier);
+
+    // 2. Register super properties so all future events include user_identifier
+    mixpanel.register({
+      user_identifier: identifier,
+      identifier_type: isEmail ? 'email' : 'phone',
+    });
+
+    // 3. Set Mixpanel user profile traits
+    const traits: Record<string, any> = {
+      $name: identifier,
+      identifier_type: isEmail ? 'email' : 'phone',
+      last_seen: new Date().toISOString(),
+    };
+    if (isEmail) {
+      traits.$email = identifier;
+    } else {
+      traits.$phone = identifier;
+    }
+    mixpanel.people.set(traits);
+  } catch (err) {
+    console.warn('[Mixpanel] Failed to set user identifier:', err);
+  }
+}
+
+/**
+ * Track an event, automatically merging active identifier if present
+ */
 export function trackEvent(eventName: string, properties?: Record<string, any>): void {
   if (typeof window === 'undefined') return;
 
@@ -33,26 +79,29 @@ export function trackEvent(eventName: string, properties?: Record<string, any>):
   }
 
   try {
-    mixpanel.track(eventName, properties);
+    const enrichedProps = {
+      ...(activeIdentifier
+        ? {
+            user_identifier: activeIdentifier,
+            identifier_type: activeIdentifierType,
+          }
+        : {}),
+      ...properties,
+    };
+    mixpanel.track(eventName, enrichedProps);
   } catch (err) {
     console.warn(`[Mixpanel] Failed to track ${eventName}:`, err);
   }
 }
 
-export function identifyUser(userId: string, traits?: Record<string, any>): void {
-  if (typeof window === 'undefined') return;
-
-  if (!isInitialized) {
-    initMixpanel();
-  }
-
+export function resetMixpanelUser(): void {
+  activeIdentifier = null;
+  activeIdentifierType = null;
+  if (typeof window === 'undefined' || !isInitialized) return;
   try {
-    mixpanel.identify(userId);
-    if (traits) {
-      mixpanel.people.set(traits);
-    }
+    mixpanel.reset();
   } catch (err) {
-    console.warn('[Mixpanel] Failed to identify user:', err);
+    console.warn('[Mixpanel] Failed to reset user:', err);
   }
 }
 

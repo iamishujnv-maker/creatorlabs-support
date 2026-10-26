@@ -30,7 +30,12 @@ import {
   AttemptedWorkshopItem,
   SupportLookupResult,
 } from '@/lib/supportService';
-import { initMixpanel, trackEvent } from '@/lib/mixpanel';
+import {
+  initMixpanel,
+  trackEvent,
+  setUserIdentifier,
+  resetMixpanelUser,
+} from '@/lib/mixpanel';
 
 type Step =
   | 'WELCOME'
@@ -193,7 +198,10 @@ export default function SupportAssistantPage() {
   const handleReset = () => {
     trackEvent('chat_restarted', {
       step_at_restart: step,
+      had_selected_workshop: Boolean(selectedWorkshop),
+      had_completed_flow: step === 'SUCCESS_CLOSING' || step === 'ESCALATION',
     });
+    resetMixpanelUser();
     setStep('WELCOME');
     setInputValue('');
     setInputError(null);
@@ -360,9 +368,14 @@ export default function SupportAssistantPage() {
     setIsEmailLookup(validation.isEmail);
     setInputValue('');
 
-    trackEvent('lookup_submitted', {
+    // Register user identifier (phone or email) as super property & identify user in Mixpanel
+    setUserIdentifier(cleanDisplay, validation.isEmail);
+
+    trackEvent('lookup_performed', {
+      user_identifier: cleanDisplay,
       identifier_type: validation.isEmail ? 'email' : 'phone',
       attempt_number: isSecondTry ? 2 : 1,
+      char_length: cleanDisplay.length,
     });
 
     // Append user message + typing indicator to chat feed
@@ -407,11 +420,18 @@ export default function SupportAssistantPage() {
 
       // Case routing
       if (lookup.caseType === 'CASE_A') {
-        trackEvent('lookup_result', {
-          case_type: 'CASE_A',
-          workshops_count: lookup.workshops.length,
+        const domainsList = Array.from(new Set(lookup.workshops.map((w) => w.domain).filter(Boolean)));
+        const totalPaidValue = lookup.workshops.reduce((acc, w) => acc + (w.amount || 0), 0);
+
+        trackEvent('lookup_outcome', {
+          outcome: 'CASE_A_PAID',
+          user_identifier: cleanDisplay,
           identifier_type: validation.isEmail ? 'email' : 'phone',
-          is_cached: false,
+          workshops_count: lookup.workshops.length,
+          unique_domains_count: domainsList.length,
+          domains_list: domainsList,
+          primary_domain: domainsList[0] || 'unknown',
+          total_paid_value: totalPaidValue,
         });
 
         setWorkshops(lookup.workshops);
@@ -419,12 +439,13 @@ export default function SupportAssistantPage() {
         const liveNowOrder = lookup.workshops.find((w) => w.statusCategory === 'LIVE_NOW');
         if (liveNowOrder && lookup.workshops.length === 1) {
           trackEvent('workshop_selected', {
+            domain: liveNowOrder.domain,
             brand_name: liveNowOrder.brandName,
             creator_name: liveNowOrder.creatorName,
-            domain: liveNowOrder.domain,
             amount: liveNowOrder.amount,
             status_category: liveNowOrder.statusCategory,
             has_workshop_date: liveNowOrder.hasWorkshopDate,
+            has_community_link: Boolean(liveNowOrder.whatsappCommunityLink),
           });
           setSelectedWorkshop(liveNowOrder);
           setChatFeed((prev) => [
@@ -445,11 +466,18 @@ export default function SupportAssistantPage() {
           setStep('WORKSHOPS_LIST');
         }
       } else if (lookup.caseType === 'CASE_B') {
-        trackEvent('lookup_result', {
-          case_type: 'CASE_B',
-          workshops_count: lookup.attempts.length,
+        const domainsList = Array.from(new Set(lookup.attempts.map((a) => a.domain).filter(Boolean)));
+        const totalAttemptedValue = lookup.attempts.reduce((acc, a) => acc + (a.amount || 0), 0);
+
+        trackEvent('lookup_outcome', {
+          outcome: 'CASE_B_ATTEMPTED',
+          user_identifier: cleanDisplay,
           identifier_type: validation.isEmail ? 'email' : 'phone',
-          is_cached: false,
+          attempts_count: lookup.attempts.length,
+          unique_domains_count: domainsList.length,
+          domains_list: domainsList,
+          primary_domain: domainsList[0] || 'unknown',
+          total_attempted_value: totalAttemptedValue,
         });
 
         setAttemptedOrders(lookup.attempts);
@@ -465,11 +493,12 @@ export default function SupportAssistantPage() {
         setStep('ATTEMPTED_LIST');
       } else {
         // CASE C
-        trackEvent('lookup_result', {
-          case_type: 'CASE_C',
-          workshops_count: 0,
+        trackEvent('lookup_outcome', {
+          outcome: 'CASE_C_NOT_FOUND',
+          user_identifier: cleanDisplay,
           identifier_type: validation.isEmail ? 'email' : 'phone',
-          is_cached: false,
+          workshops_count: 0,
+          attempt_number: isSecondTry ? 2 : 1,
         });
 
         if (isSecondTry) {
@@ -495,12 +524,13 @@ export default function SupportAssistantPage() {
     setSelectedWorkshop(ws);
 
     trackEvent('workshop_selected', {
+      domain: ws.domain,
       brand_name: ws.brandName,
       creator_name: ws.creatorName,
-      domain: ws.domain,
       amount: ws.amount,
       status_category: ws.statusCategory,
       has_workshop_date: ws.hasWorkshopDate,
+      has_community_link: Boolean(ws.whatsappCommunityLink),
     });
 
     // Mark previous list as answered so buttons are settled
@@ -536,9 +566,10 @@ export default function SupportAssistantPage() {
     setSelectedIssue(issueLabel);
     if (!selectedWorkshop) return;
 
-    trackEvent('issue_selected', {
+    trackEvent('issue_inquired', {
       issue_key: issueKey,
       issue_label: issueLabel,
+      domain: selectedWorkshop.domain,
       brand_name: selectedWorkshop.brandName,
       status_category: selectedWorkshop.statusCategory,
     });
@@ -549,6 +580,8 @@ export default function SupportAssistantPage() {
 
     trackEvent('resolution_viewed', {
       issue_key: issueKey,
+      domain: selectedWorkshop.domain,
+      brand_name: selectedWorkshop.brandName,
       has_cta: hasCta,
       cta_type: ctaType,
     });
@@ -728,6 +761,13 @@ export default function SupportAssistantPage() {
     if (!selectedWorkshop) return;
     const timeNow = getCurrentTime();
 
+    trackEvent('recording_policy_action', {
+      choice: action,
+      domain: selectedWorkshop.domain,
+      brand_name: selectedWorkshop.brandName,
+      creator_name: selectedWorkshop.creatorName,
+    });
+
     setChatFeed((prev) =>
       prev.map((item) =>
         item.id === feedItemId && item.kind === 'recording_policy'
@@ -789,10 +829,17 @@ export default function SupportAssistantPage() {
 
     const timeNow = getCurrentTime();
 
+    const attemptedDomains = Array.from(new Set(attemptedOrders.map((a) => a.domain).filter(Boolean)));
+    const totalAttemptedVal = attemptedOrders.reduce((sum, a) => sum + (a.amount || 0), 0);
+
     trackEvent('feedback_submitted', {
       resolved: answer === 'yes',
-      issue_key: 'attempted_order_inquiry',
-      brand_name: attemptedOrders[0]?.brandName || 'unknown',
+      flow_context: 'attempted_orders_recovery',
+      issue_key: 'payment_not_completed',
+      primary_domain: attemptedDomains[0] || 'unknown',
+      domains_list: attemptedDomains,
+      attempts_count: attemptedOrders.length,
+      total_attempted_value: totalAttemptedVal,
     });
 
     if (answer === 'no') {
@@ -844,8 +891,12 @@ export default function SupportAssistantPage() {
 
     trackEvent('feedback_submitted', {
       resolved: answer === 'yes',
+      flow_context: 'paid_workshop_resolution',
       issue_key: selectedIssue || 'general',
+      domain: selectedWorkshop?.domain || 'unknown',
       brand_name: selectedWorkshop?.brandName || 'unknown',
+      amount: selectedWorkshop?.amount,
+      status_category: selectedWorkshop?.statusCategory,
     });
 
     if (answer === 'no') {
@@ -891,8 +942,14 @@ export default function SupportAssistantPage() {
 
     trackEvent('escalation_triggered', {
       reason: finalReason,
-      brand_name: selectedWorkshop?.brandName || 'unknown',
+      domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
+      brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
       had_workshop: Boolean(selectedWorkshop),
+      flow_context: selectedWorkshop
+        ? 'paid_workshop'
+        : attemptedOrders.length > 0
+        ? 'attempted_order'
+        : 'unregistered_search',
     });
     setChatFeed((prev) => [
       ...prev,
@@ -1081,7 +1138,7 @@ export default function SupportAssistantPage() {
                 return (
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {/* Payment not completed cards */}
-                    {item.attempts.map((att) => (
+                    {item.attempts.map((att, idx) => (
                       <div key={att.orderId} className="attempted-card">
                         <div className="attempted-header">
                           <AlertCircle size={14} />
@@ -1098,10 +1155,15 @@ export default function SupportAssistantPage() {
                           rel="noopener noreferrer"
                           className="btn-register-again"
                           onClick={() => {
-                            trackEvent('attempted_order_action', {
+                            trackEvent('attempted_checkout_clicked', {
                               action: 'click_complete_registration',
+                              domain: att.domain,
                               brand_name: att.brandName,
                               amount: att.amount,
+                              order_id_masked: att.orderId,
+                              attempt_date: att.triedDateFormatted,
+                              card_position_in_list: idx + 1,
+                              total_user_attempts: item.attempts.length,
                             });
                           }}
                         >
