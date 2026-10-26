@@ -597,7 +597,8 @@ export default function SupportAssistantPage() {
     setSelectedIssue(issueLabel);
     if (!selectedWorkshop) return;
 
-    trackEvent('issue_inquired', {
+    // 1. Fire issue_selected immediately on button click
+    trackEvent('issue_selected', {
       issue_key: issueKey,
       issue_label: issueLabel,
       domain: selectedWorkshop.domain,
@@ -609,13 +610,16 @@ export default function SupportAssistantPage() {
     const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP');
     const ctaType = issueKey === 'COURSE_ACCESS' ? 'creator_contact' : hasCta ? 'whatsapp_community' : 'none';
 
-    trackEvent('resolution_viewed', {
-      issue_key: issueKey,
-      domain: selectedWorkshop.domain,
-      brand_name: selectedWorkshop.brandName,
-      has_cta: hasCta,
-      cta_type: ctaType,
-    });
+    // 2. Fire resolution_viewed slightly after so it chronologically succeeds issue_selected when the bot card displays
+    setTimeout(() => {
+      trackEvent('resolution_viewed', {
+        issue_key: issueKey,
+        domain: selectedWorkshop.domain,
+        brand_name: selectedWorkshop.brandName,
+        has_cta: hasCta,
+        cta_type: ctaType,
+      });
+    }, 600);
 
     // Mark issue select as answered
     setChatFeed((prev) =>
