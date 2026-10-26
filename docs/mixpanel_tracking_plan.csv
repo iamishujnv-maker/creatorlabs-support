@@ -1,0 +1,89 @@
+Event Name,Description,Property Name,Data Type,Example Value,Triggering Logic,Required
+support_session_started,Fired when the user opens the support assistant web page,referrer,String,https://creatorlabs.in/,Triggers once on component mount when the page loads in the browser,Yes
+support_session_started,Fired when the user opens the support assistant web page,device_type,String,mobile,Detected from window width (mobile <= 768px else desktop),Yes
+support_session_started,Fired when the user opens the support assistant web page,url,String,/support,Window location pathname,Yes
+lookup_submitted,Fired when user submits their mobile number or email ID,user_identifier,String,8949219529,When user clicks Send / presses Enter with a valid 10-digit number or email,Yes
+lookup_submitted,Fired when user submits their mobile number or email ID,identifier_type,String,phone,Set to 'phone' if numeric 10-digit or 'email' if contains '@',Yes
+lookup_submitted,Fired when user submits their mobile number or email ID,phone_number,String,8949219529,Present when identifier_type is phone,Conditional
+lookup_submitted,Fired when user submits their mobile number or email ID,phone,String,8949219529,Alias of phone_number for reporting compatibility,Conditional
+lookup_submitted,Fired when user submits their mobile number or email ID,email,String,user@example.com,Present when identifier_type is email,Conditional
+lookup_submitted,Fired when user submits their mobile number or email ID,attempt_number,Number,1,1 for first lookup attempt; 2 for retry search,Yes
+lookup_submitted,Fired when user submits their mobile number or email ID,char_length,Number,10,Character length of the sanitized query string,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,case_type,String,CASE_A,CASE_A (paid orders found); CASE_B (attempted/failed checkouts); CASE_C (not found),Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,outcome,String,CASE_A_PAID,Descriptive status: CASE_A_PAID / CASE_B_ATTEMPTED / CASE_C_NOT_FOUND,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,user_identifier,String,8949219529,The phone number or email queried,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,identifier_type,String,phone,'phone' or 'email',Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,phone_number,String,8949219529,Queried phone or customer phone from found booking record,Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,phone,String,8949219529,Alias for phone_number,Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,email,String,user@example.com,Queried email or customer email from found booking record,Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,workshops_count,Number,1,Total count of workshops or attempts returned,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,unique_domains_count,Number,1,Count of distinct workshop domains found,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,domains_list,List,[growthcoachsandeep.creatorlabs.in],Array of unique domains for the attendee,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,primary_domain,String,growthcoachsandeep.creatorlabs.in,Domain of the most recent booking/attempt,Yes
+lookup_result,Fired when the backend returns lookup results for the attendee,total_paid_value,Number,499,Sum of all paid workshop amounts in INR (Case A only),Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,attempts_count,Number,12,Count of failed payment attempts (Case B only),Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,total_attempted_value,Number,2499,Sum of all attempted payment amounts in INR (Case B only),Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,attempt_number,Number,1,1 for first attempt; 2 for retry (Case C only),Conditional
+lookup_result,Fired when the backend returns lookup results for the attendee,is_cached,Boolean,false,Whether result was served from Redis cache (60s TTL),Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,domain,String,growthcoachsandeep.creatorlabs.in,When user taps a workshop card (or auto-selected if single live workshop),Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,brand_name,String,Growth Coach Sandeep,Creator workshop brand title,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,creator_name,String,Sandeep,Host/creator display name,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,amount,Number,499,Ticket registration amount paid in INR,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,status_category,String,UPCOMING,Timing stage: UPCOMING / LIVE_NOW / COMPLETED / UNDATED,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,has_workshop_date,Boolean,true,Whether start time was found in workshop notes,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,has_community_link,Boolean,true,Whether official WhatsApp group link was available,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,user_identifier,String,8949219529,Attendee phone or email,Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,identifier_type,String,phone,'phone' or 'email',Yes
+workshop_selected,Fired when user selects one workshop from their registrations list,phone_number,String,8949219529,Attendee phone number,Conditional
+workshop_selected,Fired when user selects one workshop from their registrations list,email,String,user@example.com,Attendee email address,Conditional
+issue_selected,Fired when user selects a specific issue to get help with,issue_key,String,ZOOM_LINK,When user clicks an issue button (ZOOM_LINK / WA_COMMUNITY / WANT_REFUND / RECORDING_REQUEST / MISSED_WORKSHOP / CHANGE_TIMING / COURSE_ACCESS / SOMETHING_ELSE),Yes
+issue_selected,Fired when user selects a specific issue to get help with,issue_label,String,Where can I get the Zoom link?,Full user-facing button text,Yes
+issue_selected,Fired when user selects a specific issue to get help with,domain,String,growthcoachsandeep.creatorlabs.in,Selected workshop landing page domain,Yes
+issue_selected,Fired when user selects a specific issue to get help with,brand_name,String,Growth Coach Sandeep,Selected workshop brand name,Yes
+issue_selected,Fired when user selects a specific issue to get help with,status_category,String,UPCOMING,Workshop timing category,Yes
+issue_selected,Fired when user selects a specific issue to get help with,user_identifier,String,8949219529,Attendee phone or email,Yes
+issue_selected,Fired when user selects a specific issue to get help with,identifier_type,String,phone,'phone' or 'email',Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,issue_key,String,ZOOM_LINK,When bot outputs the resolution message for the selected issue,Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,domain,String,growthcoachsandeep.creatorlabs.in,Selected workshop domain,Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,brand_name,String,Growth Coach Sandeep,Selected workshop brand name,Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,has_cta,Boolean,true,Whether an external action button (e.g. WhatsApp community link) is provided,Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,cta_type,String,whatsapp_community,Type of CTA: 'whatsapp_community' / 'creator_contact' / 'none',Yes
+resolution_viewed,Fired when the automated guidance/answer message is displayed,user_identifier,String,8949219529,Attendee phone or email,Yes
+recording_policy_action,Fired when user responds to the workshop recording policy card,choice,String,understood,When user clicks 'Understood thank you' ('understood') or 'The creator told me that recording will be provided' ('creator_promised'),Yes
+recording_policy_action,Fired when user responds to the workshop recording policy card,domain,String,growthcoachsandeep.creatorlabs.in,Workshop domain,Yes
+recording_policy_action,Fired when user responds to the workshop recording policy card,brand_name,String,Growth Coach Sandeep,Workshop brand name,Yes
+recording_policy_action,Fired when user responds to the workshop recording policy card,creator_name,String,Sandeep,Creator name,Yes
+recording_policy_action,Fired when user responds to the workshop recording policy card,user_identifier,String,8949219529,Attendee phone or email,Yes
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),resolved,Boolean,true,When user clicks 'Yes this solved my problem' (true) or 'No I need more help' (false),Yes
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),flow_context,String,paid_workshop_resolution,'paid_workshop_resolution' (Case A) or 'attempted_orders_recovery' (Case B),Yes
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),issue_key,String,ZOOM_LINK,The issue being resolved (or 'payment_not_completed' for Case B),Yes
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),domain,String,growthcoachsandeep.creatorlabs.in,Workshop domain (Case A),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),brand_name,String,Growth Coach Sandeep,Workshop brand name (Case A),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),primary_domain,String,growthcoachsandeep.creatorlabs.in,Primary domain of attempted orders (Case B),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),domains_list,List,[growthcoachsandeep.creatorlabs.in],Array of all domains with failed checkouts (Case B),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),attempts_count,Number,12,Count of failed payment attempts (Case B),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),total_attempted_value,Number,2499,Sum of attempted amounts in INR (Case B),Conditional
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),user_identifier,String,8949219529,Attendee phone or email,Yes
+feedback_submitted,Fired when user submits resolution feedback (Did this solve your problem?),identifier_type,String,phone,'phone' or 'email',Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,reason,String,Needs further assistance,When user requests human agent or search fails twice (Case C),Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,domain,String,growthcoachsandeep.creatorlabs.in,Domain involved (or 'none' if Case C search),Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,brand_name,String,Growth Coach Sandeep,Brand name involved (or 'none' if Case C search),Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,had_workshop,Boolean,true,Whether the attendee had an identified registration,Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,flow_context,String,paid_workshop,'paid_workshop' / 'attempted_order' / 'unregistered_search',Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,user_identifier,String,8949219529,Attendee phone or email,Yes
+escalation_triggered,Fired when user is directed to human support on WhatsApp,identifier_type,String,phone,'phone' or 'email',Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,action,String,click_complete_registration,When user taps 'Complete registration' on an unpaid checkout attempt card,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,domain,String,growthcoachsandeep.creatorlabs.in,Specific landing page domain of the clicked attempt card,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,brand_name,String,Growth Coach Sandeep,Workshop brand name,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,amount,Number,499,Amount of the failed order in INR,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,order_id_masked,String,order_abc...xyz,Masked Razorpay order ID,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,attempt_date,String,26 Oct 2026,Formatted date/time of payment attempt,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,card_position_in_list,Number,1,1-indexed position of the clicked card in the attempts list,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,total_user_attempts,Number,12,Total count of attempts in the user list,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,user_identifier,String,8949219529,Attendee phone or email,Yes
+attempted_order_action,Fired when attendee with an incomplete payment clicks Complete Registration,identifier_type,String,phone,'phone' or 'email',Yes
+chat_restarted,Fired when user clicks Restart Chat in the top-right header,step_at_restart,String,RESOLUTION_CTA,When user clicks 'Restart Chat' button in header,Yes
+chat_restarted,Fired when user clicks Restart Chat in the top-right header,had_selected_workshop,Boolean,true,Whether user had picked a workshop before restarting,Yes
+chat_restarted,Fired when user clicks Restart Chat in the top-right header,had_completed_flow,Boolean,false,Whether user had reached SUCCESS_CLOSING or ESCALATION,Yes
+chat_restarted,Fired when user clicks Restart Chat in the top-right header,user_identifier,String,8949219529,Attendee phone or email,Yes
+chat_restarted,Fired when user clicks Restart Chat in the top-right header,identifier_type,String,phone,'phone' or 'email',Yes
