@@ -427,11 +427,25 @@ export default function SupportAssistantPage() {
       }
 
       // Case routing
-      const userContactProps = validation.isEmail
-        ? { email: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'email' }
-        : { phone_number: cleanDisplay, phone: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'phone' };
+      const userContactProps: Record<string, any> = {
+        user_identifier: cleanDisplay,
+        identifier_type: validation.isEmail ? 'email' : 'phone',
+        ...(validation.isEmail
+          ? { email: cleanDisplay }
+          : { phone_number: cleanDisplay, phone: cleanDisplay }),
+      };
 
       if (lookup.caseType === 'CASE_A') {
+        const foundPhone = lookup.workshops.find((w) => w.customerPhone)?.customerPhone;
+        const foundEmail = lookup.workshops.find((w) => w.customerEmail)?.customerEmail;
+        if (foundPhone && !userContactProps.phone_number) {
+          userContactProps.phone_number = foundPhone;
+          userContactProps.phone = foundPhone;
+        }
+        if (foundEmail && !userContactProps.email) {
+          userContactProps.email = foundEmail;
+        }
+
         const domainsList = Array.from(new Set(lookup.workshops.map((w) => w.domain).filter(Boolean)));
         const totalPaidValue = lookup.workshops.reduce((acc, w) => acc + (w.amount || 0), 0);
 
