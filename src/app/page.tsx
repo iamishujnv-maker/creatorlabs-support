@@ -371,9 +371,17 @@ export default function SupportAssistantPage() {
     // Register user identifier (phone or email) as super property & identify user in Mixpanel
     setUserIdentifier(cleanDisplay, validation.isEmail);
 
+    const userContactProps = validation.isEmail
+      ? { email: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'email' }
+      : { phone_number: cleanDisplay, phone: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'phone' };
+
+    trackEvent('lookup_submitted', {
+      ...userContactProps,
+      attempt_number: isSecondTry ? 2 : 1,
+      char_length: cleanDisplay.length,
+    });
     trackEvent('lookup_performed', {
-      user_identifier: cleanDisplay,
-      identifier_type: validation.isEmail ? 'email' : 'phone',
+      ...userContactProps,
       attempt_number: isSecondTry ? 2 : 1,
       char_length: cleanDisplay.length,
     });
@@ -419,20 +427,28 @@ export default function SupportAssistantPage() {
       }
 
       // Case routing
+      const userContactProps = validation.isEmail
+        ? { email: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'email' }
+        : { phone_number: cleanDisplay, phone: cleanDisplay, user_identifier: cleanDisplay, identifier_type: 'phone' };
+
       if (lookup.caseType === 'CASE_A') {
         const domainsList = Array.from(new Set(lookup.workshops.map((w) => w.domain).filter(Boolean)));
         const totalPaidValue = lookup.workshops.reduce((acc, w) => acc + (w.amount || 0), 0);
 
-        trackEvent('lookup_outcome', {
+        const outcomeProps = {
+          case_type: 'CASE_A',
           outcome: 'CASE_A_PAID',
-          user_identifier: cleanDisplay,
-          identifier_type: validation.isEmail ? 'email' : 'phone',
+          ...userContactProps,
           workshops_count: lookup.workshops.length,
           unique_domains_count: domainsList.length,
           domains_list: domainsList,
           primary_domain: domainsList[0] || 'unknown',
           total_paid_value: totalPaidValue,
-        });
+          is_cached: false,
+        };
+
+        trackEvent('lookup_result', outcomeProps);
+        trackEvent('lookup_outcome', outcomeProps);
 
         setWorkshops(lookup.workshops);
 
@@ -469,16 +485,21 @@ export default function SupportAssistantPage() {
         const domainsList = Array.from(new Set(lookup.attempts.map((a) => a.domain).filter(Boolean)));
         const totalAttemptedValue = lookup.attempts.reduce((acc, a) => acc + (a.amount || 0), 0);
 
-        trackEvent('lookup_outcome', {
+        const outcomeProps = {
+          case_type: 'CASE_B',
           outcome: 'CASE_B_ATTEMPTED',
-          user_identifier: cleanDisplay,
-          identifier_type: validation.isEmail ? 'email' : 'phone',
+          ...userContactProps,
           attempts_count: lookup.attempts.length,
+          workshops_count: lookup.attempts.length,
           unique_domains_count: domainsList.length,
           domains_list: domainsList,
           primary_domain: domainsList[0] || 'unknown',
           total_attempted_value: totalAttemptedValue,
-        });
+          is_cached: false,
+        };
+
+        trackEvent('lookup_result', outcomeProps);
+        trackEvent('lookup_outcome', outcomeProps);
 
         setAttemptedOrders(lookup.attempts);
         setChatFeed((prev) => [
@@ -493,13 +514,17 @@ export default function SupportAssistantPage() {
         setStep('ATTEMPTED_LIST');
       } else {
         // CASE C
-        trackEvent('lookup_outcome', {
+        const outcomeProps = {
+          case_type: 'CASE_C',
           outcome: 'CASE_C_NOT_FOUND',
-          user_identifier: cleanDisplay,
-          identifier_type: validation.isEmail ? 'email' : 'phone',
+          ...userContactProps,
           workshops_count: 0,
           attempt_number: isSecondTry ? 2 : 1,
-        });
+          is_cached: false,
+        };
+
+        trackEvent('lookup_result', outcomeProps);
+        trackEvent('lookup_outcome', outcomeProps);
 
         if (isSecondTry) {
           triggerEscalation('Registration not found after phone and email search');
@@ -1155,7 +1180,7 @@ export default function SupportAssistantPage() {
                           rel="noopener noreferrer"
                           className="btn-register-again"
                           onClick={() => {
-                            trackEvent('attempted_checkout_clicked', {
+                            const clickProps = {
                               action: 'click_complete_registration',
                               domain: att.domain,
                               brand_name: att.brandName,
@@ -1164,7 +1189,9 @@ export default function SupportAssistantPage() {
                               attempt_date: att.triedDateFormatted,
                               card_position_in_list: idx + 1,
                               total_user_attempts: item.attempts.length,
-                            });
+                            };
+                            trackEvent('attempted_order_action', clickProps);
+                            trackEvent('attempted_checkout_clicked', clickProps);
                           }}
                         >
                           <span>Complete registration</span>

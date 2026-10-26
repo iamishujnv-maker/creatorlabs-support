@@ -42,14 +42,21 @@ export function setUserIdentifier(identifier: string, isEmail: boolean): void {
   activeIdentifierType = isEmail ? 'email' : 'phone';
 
   try {
-    // 1. Identify distinct user
+    // 1. Identify distinct user so Mixpanel's Distinct ID column shows the phone number / email
     mixpanel.identify(identifier);
 
-    // 2. Register super properties so all future events include user_identifier
-    mixpanel.register({
+    // 2. Register super properties so all future events include phone_number / email
+    const superProps: Record<string, any> = {
       user_identifier: identifier,
       identifier_type: isEmail ? 'email' : 'phone',
-    });
+    };
+    if (isEmail) {
+      superProps.email = identifier;
+    } else {
+      superProps.phone_number = identifier;
+      superProps.phone = identifier;
+    }
+    mixpanel.register(superProps);
 
     // 3. Set Mixpanel user profile traits
     const traits: Record<string, any> = {
@@ -59,8 +66,11 @@ export function setUserIdentifier(identifier: string, isEmail: boolean): void {
     };
     if (isEmail) {
       traits.$email = identifier;
+      traits.email = identifier;
     } else {
       traits.$phone = identifier;
+      traits.phone_number = identifier;
+      traits.phone = identifier;
     }
     mixpanel.people.set(traits);
   } catch (err) {
@@ -84,6 +94,9 @@ export function trackEvent(eventName: string, properties?: Record<string, any>):
         ? {
             user_identifier: activeIdentifier,
             identifier_type: activeIdentifierType,
+            ...(activeIdentifierType === 'email'
+              ? { email: activeIdentifier }
+              : { phone_number: activeIdentifier, phone: activeIdentifier }),
           }
         : {}),
       ...properties,
