@@ -380,11 +380,6 @@ export default function SupportAssistantPage() {
       attempt_number: isSecondTry ? 2 : 1,
       char_length: cleanDisplay.length,
     });
-    trackEvent('lookup_performed', {
-      ...userContactProps,
-      attempt_number: isSecondTry ? 2 : 1,
-      char_length: cleanDisplay.length,
-    });
 
     // Append user message + typing indicator to chat feed
     setChatFeed((prev) => [
@@ -462,7 +457,6 @@ export default function SupportAssistantPage() {
         };
 
         trackEvent('lookup_result', outcomeProps);
-        trackEvent('lookup_outcome', outcomeProps);
 
         setWorkshops(lookup.workshops);
 
@@ -513,7 +507,6 @@ export default function SupportAssistantPage() {
         };
 
         trackEvent('lookup_result', outcomeProps);
-        trackEvent('lookup_outcome', outcomeProps);
 
         setAttemptedOrders(lookup.attempts);
         setChatFeed((prev) => [
@@ -538,7 +531,6 @@ export default function SupportAssistantPage() {
         };
 
         trackEvent('lookup_result', outcomeProps);
-        trackEvent('lookup_outcome', outcomeProps);
 
         if (isSecondTry) {
           triggerEscalation('Registration not found after phone and email search');
@@ -1205,7 +1197,6 @@ export default function SupportAssistantPage() {
                               total_user_attempts: item.attempts.length,
                             };
                             trackEvent('attempted_order_action', clickProps);
-                            trackEvent('attempted_checkout_clicked', clickProps);
                           }}
                         >
                           <span>Complete registration</span>
