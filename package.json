@@ -13,6 +13,7 @@
     "canvas-confetti": "^1.9.4",
     "ioredis": "^6.0.0",
     "lucide-react": "^1.57.0",
+    "mixpanel-browser": "^2.84.0",
     "mongodb": "^7.7.0",
     "next": "^16.4.3",
     "react": "^19.0.0",

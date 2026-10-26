@@ -30,6 +30,7 @@ import {
   AttemptedWorkshopItem,
   SupportLookupResult,
 } from '@/lib/supportService';
+import { initMixpanel, trackEvent } from '@/lib/mixpanel';
 
 type Step =
   | 'WELCOME'
@@ -178,8 +179,21 @@ export default function SupportAssistantPage() {
     scrollToBottom();
   }, [chatFeed, step]);
 
+  // Initialize Mixpanel and track session started
+  useEffect(() => {
+    initMixpanel();
+    trackEvent('support_session_started', {
+      referrer: typeof document !== 'undefined' ? document.referrer || 'direct' : 'direct',
+      device_type: typeof window !== 'undefined' && window.innerWidth <= 768 ? 'mobile' : 'desktop',
+      url: typeof window !== 'undefined' ? window.location.pathname : '/support',
+    });
+  }, []);
+
   // Reset to initial state
   const handleReset = () => {
+    trackEvent('chat_restarted', {
+      step_at_restart: step,
+    });
     setStep('WELCOME');
     setInputValue('');
     setInputError(null);
@@ -346,6 +360,11 @@ export default function SupportAssistantPage() {
     setIsEmailLookup(validation.isEmail);
     setInputValue('');
 
+    trackEvent('lookup_submitted', {
+      identifier_type: validation.isEmail ? 'email' : 'phone',
+      attempt_number: isSecondTry ? 2 : 1,
+    });
+
     // Append user message + typing indicator to chat feed
     setChatFeed((prev) => [
       ...prev,
@@ -388,10 +407,25 @@ export default function SupportAssistantPage() {
 
       // Case routing
       if (lookup.caseType === 'CASE_A') {
+        trackEvent('lookup_result', {
+          case_type: 'CASE_A',
+          workshops_count: lookup.workshops.length,
+          identifier_type: validation.isEmail ? 'email' : 'phone',
+          is_cached: false,
+        });
+
         setWorkshops(lookup.workshops);
 
         const liveNowOrder = lookup.workshops.find((w) => w.statusCategory === 'LIVE_NOW');
         if (liveNowOrder && lookup.workshops.length === 1) {
+          trackEvent('workshop_selected', {
+            brand_name: liveNowOrder.brandName,
+            creator_name: liveNowOrder.creatorName,
+            domain: liveNowOrder.domain,
+            amount: liveNowOrder.amount,
+            status_category: liveNowOrder.statusCategory,
+            has_workshop_date: liveNowOrder.hasWorkshopDate,
+          });
           setSelectedWorkshop(liveNowOrder);
           setChatFeed((prev) => [
             ...prev,
@@ -411,6 +445,13 @@ export default function SupportAssistantPage() {
           setStep('WORKSHOPS_LIST');
         }
       } else if (lookup.caseType === 'CASE_B') {
+        trackEvent('lookup_result', {
+          case_type: 'CASE_B',
+          workshops_count: lookup.attempts.length,
+          identifier_type: validation.isEmail ? 'email' : 'phone',
+          is_cached: false,
+        });
+
         setAttemptedOrders(lookup.attempts);
         setChatFeed((prev) => [
           ...prev,
@@ -424,6 +465,13 @@ export default function SupportAssistantPage() {
         setStep('ATTEMPTED_LIST');
       } else {
         // CASE C
+        trackEvent('lookup_result', {
+          case_type: 'CASE_C',
+          workshops_count: 0,
+          identifier_type: validation.isEmail ? 'email' : 'phone',
+          is_cached: false,
+        });
+
         if (isSecondTry) {
           triggerEscalation('Registration not found after phone and email search');
         } else {
@@ -445,6 +493,15 @@ export default function SupportAssistantPage() {
   // Workshop Selected from Workshops List
   const handleSelectWorkshop = (itemId: string, ws: PaidWorkshopItem) => {
     setSelectedWorkshop(ws);
+
+    trackEvent('workshop_selected', {
+      brand_name: ws.brandName,
+      creator_name: ws.creatorName,
+      domain: ws.domain,
+      amount: ws.amount,
+      status_category: ws.statusCategory,
+      has_workshop_date: ws.hasWorkshopDate,
+    });
 
     // Mark previous list as answered so buttons are settled
     setChatFeed((prev) =>
@@ -479,13 +536,29 @@ export default function SupportAssistantPage() {
     setSelectedIssue(issueLabel);
     if (!selectedWorkshop) return;
 
+    trackEvent('issue_selected', {
+      issue_key: issueKey,
+      issue_label: issueLabel,
+      brand_name: selectedWorkshop.brandName,
+      status_category: selectedWorkshop.statusCategory,
+    });
+
+    const communityLink = selectedWorkshop.whatsappCommunityLink || 'https://chat.whatsapp.com/';
+    const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP');
+    const ctaType = issueKey === 'COURSE_ACCESS' ? 'creator_contact' : hasCta ? 'whatsapp_community' : 'none';
+
+    trackEvent('resolution_viewed', {
+      issue_key: issueKey,
+      has_cta: hasCta,
+      cta_type: ctaType,
+    });
+
     // Mark issue select as answered
     setChatFeed((prev) =>
       prev.map((item) => (item.id === itemId ? { ...item, answered: true } : item))
     );
 
     const timeNow = getCurrentTime();
-    const communityLink = selectedWorkshop.whatsappCommunityLink || 'https://chat.whatsapp.com/';
 
     switch (issueKey) {
       case 'ZOOM_LINK':
@@ -716,6 +789,12 @@ export default function SupportAssistantPage() {
 
     const timeNow = getCurrentTime();
 
+    trackEvent('feedback_submitted', {
+      resolved: answer === 'yes',
+      issue_key: 'attempted_order_inquiry',
+      brand_name: attemptedOrders[0]?.brandName || 'unknown',
+    });
+
     if (answer === 'no') {
       setSelectedIssue('Payment not completed - needs assistance');
       setChatFeed((prev) => [
@@ -763,6 +842,12 @@ export default function SupportAssistantPage() {
 
     const timeNow = getCurrentTime();
 
+    trackEvent('feedback_submitted', {
+      resolved: answer === 'yes',
+      issue_key: selectedIssue || 'general',
+      brand_name: selectedWorkshop?.brandName || 'unknown',
+    });
+
     if (answer === 'no') {
       setSelectedIssue('Needs further assistance');
       setChatFeed((prev) => [
@@ -803,6 +888,12 @@ export default function SupportAssistantPage() {
   const triggerEscalation = (reason?: string) => {
     const finalReason = reason || selectedIssue || 'General Query';
     setSelectedIssue(finalReason);
+
+    trackEvent('escalation_triggered', {
+      reason: finalReason,
+      brand_name: selectedWorkshop?.brandName || 'unknown',
+      had_workshop: Boolean(selectedWorkshop),
+    });
     setChatFeed((prev) => [
       ...prev,
       {
@@ -1006,6 +1097,13 @@ export default function SupportAssistantPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           className="btn-register-again"
+                          onClick={() => {
+                            trackEvent('attempted_order_action', {
+                              action: 'click_complete_registration',
+                              brand_name: att.brandName,
+                              amount: att.amount,
+                            });
+                          }}
                         >
                           <span>Complete registration</span>
                           <ExternalLink size={14} />

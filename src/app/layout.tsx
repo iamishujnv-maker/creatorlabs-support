@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import './globals.css';
 
 export const viewport: Viewport = {
@@ -33,6 +34,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <Script
+          src="https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js"
+          strategy="afterInteractive"
+        />
       </head>
       <body>{children}</body>
     </html>
