@@ -52,6 +52,21 @@ type Step =
   | 'ESCALATION'
   | 'SUCCESS_CLOSING';
 
+function WhatsAppIcon({ size = 16, style }: { size?: number; style?: React.CSSProperties }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      style={{ flexShrink: 0, ...style }}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
 export type ChatFeedItem =
   | {
       id: string;
@@ -100,6 +115,8 @@ export type ChatFeedItem =
       ctaLink: string | null;
       ctaText: string;
       answered?: 'yes' | 'no' | boolean | null;
+      issueKey?: string;
+      issueLabel?: string;
     }
   | {
       id: string;
@@ -129,7 +146,7 @@ export type ChatFeedItem =
   | {
       id: string;
       kind: 'escalation';
-      reason?: string;
+      reason: string;
     }
   | {
       id: string;
@@ -151,6 +168,7 @@ export default function SupportAssistantPage() {
   const [selectedWorkshop, setSelectedWorkshop] = useState<PaidWorkshopItem | null>(null);
   const [attemptedOrders, setAttemptedOrders] = useState<AttemptedWorkshopItem[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<string>('');
+  const [selectedIssueKey, setSelectedIssueKey] = useState<string>('');
 
   // Config
   const [centralWhatsApp, setCentralWhatsApp] = useState<string>('918949451726');
@@ -210,6 +228,7 @@ export default function SupportAssistantPage() {
     setSelectedWorkshop(null);
     setAttemptedOrders([]);
     setSelectedIssue('');
+    setSelectedIssueKey('');
     setChatFeed([{ id: 'welcome', kind: 'bot_welcome' }]);
   };
 
@@ -595,6 +614,7 @@ export default function SupportAssistantPage() {
   // Issue Handlers aligned with business spreadsheet rules
   const handleIssueSelect = (itemId: string, issueKey: string, issueLabel: string) => {
     setSelectedIssue(issueLabel);
+    setSelectedIssueKey(issueKey);
     if (!selectedWorkshop) return;
 
     // 1. Fire issue_selected immediately on button click
@@ -642,6 +662,8 @@ export default function SupportAssistantPage() {
               ],
               ctaLink: communityLink,
               ctaText: 'Open WhatsApp Community',
+              issueKey,
+              issueLabel,
               answered: null,
             },
           ]);
@@ -659,6 +681,8 @@ export default function SupportAssistantPage() {
               ],
               ctaLink: communityLink,
               ctaText: 'Join WhatsApp Community',
+              issueKey,
+              issueLabel,
               answered: null,
             },
           ]);
@@ -680,6 +704,8 @@ export default function SupportAssistantPage() {
             ctaLink: communityLink,
             ctaText:
               selectedWorkshop.statusCategory === 'LIVE_NOW' ? 'Open WhatsApp Community' : 'Join WhatsApp Community',
+            issueKey,
+            issueLabel,
             answered: null,
           },
         ]);
@@ -698,6 +724,8 @@ export default function SupportAssistantPage() {
             ],
             ctaLink: null,
             ctaText: '',
+            issueKey,
+            issueLabel,
             answered: null,
           },
         ]);
@@ -725,6 +753,8 @@ export default function SupportAssistantPage() {
             messages: [messageText],
             ctaLink: communityLink,
             ctaText: 'Join WhatsApp Community',
+            issueKey,
+            issueLabel,
             answered: null,
           },
         ]);
@@ -744,6 +774,8 @@ export default function SupportAssistantPage() {
             ],
             ctaLink: null,
             ctaText: '',
+            issueKey,
+            issueLabel,
             answered: null,
           },
         ]);
@@ -845,6 +877,8 @@ export default function SupportAssistantPage() {
           ],
           ctaLink: null,
           ctaText: '',
+          issueKey: 'RECORDING_REQUEST',
+          issueLabel: 'Recording policy understood',
           answered: null,
         },
       ]);
@@ -1403,26 +1437,39 @@ export default function SupportAssistantPage() {
 
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
-                        <div className="chat-bubble-bot">
-                          Join quickly! The Zoom meeting link is pinned inside the WhatsApp community.
+                        <div className="chat-bubble-bot chat-bubble-with-cta">
+                          <div>
+                            Join quickly! The Zoom meeting link is pinned inside the WhatsApp community.
+                          </div>
+                          {item.workshop.whatsappCommunityLink && (
+                            <div className="chat-bubble-cta-wrapper">
+                              <a
+                                href={item.workshop.whatsappCommunityLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn-bubble-whatsapp"
+                                onClick={() => {
+                                  trackEvent('cta_clicked', {
+                                    cta_name: 'open_whatsapp_community_live_now',
+                                    cta_type: 'whatsapp_community',
+                                    cta_label: 'Open WhatsApp community',
+                                    issue_key: 'LIVE_NOW',
+                                    issue_label: 'Live Now - Join Community',
+                                    domain: item.workshop.domain,
+                                    brand_name: item.workshop.brandName,
+                                    status_category: item.workshop.statusCategory,
+                                    cta_url: item.workshop.whatsappCommunityLink,
+                                  });
+                                }}
+                              >
+                                <WhatsAppIcon size={16} />
+                                <span>Open WhatsApp community</span>
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-
-                    {item.workshop.whatsappCommunityLink && (
-                      <div className="whatsapp-cta-block">
-                        <a
-                          href={item.workshop.whatsappCommunityLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-whatsapp-cta"
-                        >
-                          <MessageSquare size={18} />
-                          <span>Open WhatsApp community</span>
-                        </a>
-                        <span className="whatsapp-cta-subtext">Opens in WhatsApp</span>
-                      </div>
-                    )}
 
                     {!item.answered && (
                       <div className="chips-container" style={{ marginTop: 6 }}>
@@ -1629,28 +1676,47 @@ export default function SupportAssistantPage() {
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
-                        {item.messages.map((msg, i) => (
-                          <div key={i} className="chat-bubble-bot">
-                            {msg}
-                          </div>
-                        ))}
+                        {item.messages.map((msg, i) => {
+                          const isLast = i === item.messages.length - 1;
+                          if (isLast && item.ctaLink) {
+                            return (
+                              <div key={i} className="chat-bubble-bot chat-bubble-with-cta">
+                                <div>{msg}</div>
+                                <div className="chat-bubble-cta-wrapper">
+                                  <a
+                                    href={item.ctaLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-bubble-whatsapp"
+                                    onClick={() => {
+                                      trackEvent('cta_clicked', {
+                                        cta_name: 'join_whatsapp_community',
+                                        cta_type: 'whatsapp_community',
+                                        cta_label: item.ctaText,
+                                        issue_key: item.issueKey || selectedIssueKey || 'none',
+                                        issue_label: item.issueLabel || selectedIssue || 'none',
+                                        domain: selectedWorkshop?.domain || 'unknown',
+                                        brand_name: selectedWorkshop?.brandName || 'unknown',
+                                        status_category: selectedWorkshop?.statusCategory,
+                                        cta_url: item.ctaLink,
+                                      });
+                                    }}
+                                  >
+                                    <WhatsAppIcon size={16} />
+                                    <span>{item.ctaText}</span>
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div key={i} className="chat-bubble-bot">
+                              {msg}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-
-                    {item.ctaLink && (
-                      <div className="whatsapp-cta-block">
-                        <a
-                          href={item.ctaLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-whatsapp-cta"
-                        >
-                          <MessageSquare size={18} />
-                          <span>{item.ctaText}</span>
-                        </a>
-                        <span className="whatsapp-cta-subtext">Opens in WhatsApp</span>
-                      </div>
-                    )}
 
                     {!item.answered && (
                       <div className="chat-row-bot" style={{ marginTop: 4 }}>
@@ -1807,8 +1873,21 @@ export default function SupportAssistantPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-creator-wa"
+                            onClick={() => {
+                              trackEvent('cta_clicked', {
+                                cta_name: 'message_creator_on_whatsapp',
+                                cta_type: 'whatsapp_creator',
+                                cta_label: 'Message on WhatsApp',
+                                issue_key: selectedIssueKey || 'COURSE_ACCESS',
+                                issue_label: selectedIssue || 'Contact creator',
+                                domain: item.workshop.domain,
+                                brand_name: item.workshop.brandName,
+                                creator_name: item.workshop.creatorName,
+                                cta_url: `https://wa.me/91${(item.workshop.creatorSupportPhone || '').replace(/\D/g, '').slice(-10)}`,
+                              });
+                            }}
                           >
-                            <MessageSquare size={15} />
+                            <WhatsAppIcon size={15} />
                             <span>Message on WhatsApp</span>
                           </a>
                         ) : (
@@ -1913,23 +1992,42 @@ export default function SupportAssistantPage() {
                         <div className="chat-bubble-bot">
                           Sorry this didn’t sort it out! Someone from our support team will help you personally.
                         </div>
-                        <div className="chat-bubble-bot">
-                          Message us on WhatsApp and we’ll reply within {supportSlaText}. Your booking details are already pre-filled in the message.
+                        <div className="chat-bubble-bot chat-bubble-with-cta">
+                          <div>
+                            Message us on WhatsApp and we’ll reply within {supportSlaText}. Your booking details are already pre-filled in the message.
+                          </div>
+                          <div className="chat-bubble-cta-wrapper">
+                            <a
+                              href={getEscalationWhatsAppUrl()}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-bubble-whatsapp"
+                              onClick={() => {
+                                trackEvent('cta_clicked', {
+                                  cta_name: 'message_on_whatsapp',
+                                  cta_type: 'whatsapp_escalation',
+                                  cta_label: 'Message us on WhatsApp',
+                                  issue_key: selectedIssueKey || 'none',
+                                  issue_label: selectedIssue || item.reason || 'none',
+                                  reason: item.reason,
+                                  domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
+                                  brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
+                                  had_workshop: Boolean(selectedWorkshop),
+                                  flow_context: selectedWorkshop
+                                    ? 'paid_workshop'
+                                    : attemptedOrders.length > 0
+                                    ? 'attempted_order'
+                                    : 'unregistered_search',
+                                  cta_url: getEscalationWhatsAppUrl(),
+                                });
+                              }}
+                            >
+                              <WhatsAppIcon size={16} />
+                              <span>Message us on WhatsApp</span>
+                            </a>
+                          </div>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="whatsapp-cta-block">
-                      <a
-                        href={getEscalationWhatsAppUrl()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn-whatsapp-cta"
-                      >
-                        <MessageSquare size={18} />
-                        <span>Message us on WhatsApp</span>
-                      </a>
-                      <span className="whatsapp-cta-subtext">Creator Labs Workshops Support</span>
                     </div>
 
                     {workshops.length > 1 && (

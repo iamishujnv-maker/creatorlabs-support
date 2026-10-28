@@ -533,7 +533,55 @@
   flex-shrink: 0;
 }
 
-/* WhatsApp CTA Button (H06, H14) */
+/* In-Message Sleek WhatsApp CTA (H06, H14) */
+.chat-bubble-with-cta {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-bubble-cta-wrapper {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.btn-bubble-whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #25D366;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.28);
+  border: none;
+  width: 100%;
+  box-sizing: border-box;
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+.btn-bubble-whatsapp:hover {
+  background: #20bd5a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.38);
+}
+
+.btn-bubble-whatsapp:active {
+  transform: translateY(0);
+}
+
+.btn-bubble-whatsapp svg {
+  flex-shrink: 0;
+}
+
+/* Legacy fallback block (deprecated in favor of in-bubble CTA) */
 .whatsapp-cta-block {
   margin-top: 4px;
   display: flex;
@@ -543,11 +591,11 @@
 }
 
 .btn-whatsapp-cta {
-  background: #16a34a;
+  background: #25D366;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
-  padding: 13px 18px;
+  padding: 12px 18px;
   border-radius: 12px;
   border: none;
   display: flex;
@@ -557,14 +605,14 @@
   width: 100%;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(22, 163, 74, 0.25);
+  box-shadow: 0 3px 10px rgba(37, 211, 102, 0.25);
   transition: all 0.15s ease;
   font-family: inherit;
 }
 
 .btn-whatsapp-cta:hover {
-  background: #15803d;
-  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35);
+  background: #20bd5a;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
 }
 
 .whatsapp-cta-subtext {

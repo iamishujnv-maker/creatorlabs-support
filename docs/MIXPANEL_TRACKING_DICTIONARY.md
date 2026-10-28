@@ -207,3 +207,23 @@ Once the user enters their phone number or email, Mixpanel calls `mixpanel.ident
 | `step_at_restart` | String | `RESOLUTION_CTA` | The workflow step the attendee was on when restarting (`WELCOME`, `WORKSHOPS_LIST`, `ISSUE_SELECT`, `RESOLUTION_CTA`, `ATTEMPTED_LIST`, `NOT_FOUND_FIRST`, `SUCCESS_CLOSING`, `ESCALATION`). |
 | `had_selected_workshop`| Boolean | `true` | `true` if the user had already picked a workshop before restarting. |
 | `had_completed_flow` | Boolean | `false` | `true` if user had reached final feedback or escalation before restarting. |
+
+---
+
+### 12. `cta_clicked`
+* **Triggering Logic**: Fires whenever the attendee clicks on any interactive WhatsApp action button (Community Join link, Human Agent Escalation, or Creator contact).
+* **Purpose**: Measures outbound click-through conversion, community onboarding intent, and human support handoff clicks.
+
+| Property Name | Data Type | Example Value | Meaning & Possible Values |
+| :--- | :--- | :--- | :--- |
+| `cta_name` | String | `join_whatsapp_community` | Action identifier: <br>• `'join_whatsapp_community'`: Clicked to join the workshop WhatsApp group.<br>• `'message_on_whatsapp'`: Clicked human agent escalation support.<br>• `'open_whatsapp_community_live_now'`: Clicked community link for a live workshop.<br>• `'message_creator_on_whatsapp'`: Clicked direct WhatsApp link for creator. |
+| `cta_type` | String | `whatsapp_community` | Button category: `'whatsapp_community'` \| `'whatsapp_escalation'` \| `'whatsapp_creator'`. |
+| `cta_label` | String | `Join WhatsApp Community` | Exact text on the button. |
+| `issue_key` | String | `ZOOM_LINK` | The issue being resolved when CTA was clicked (e.g. `'ZOOM_LINK'`, `'WA_COMMUNITY'`, `'MISSED_WORKSHOP'`). |
+| `issue_label` | String | `Where can I get the Zoom link?` | Full user-facing issue label. |
+| `domain` | String | `growthcoach.creatorlabs.in` | Workshop landing page domain. |
+| `brand_name` | String | `Growth Coach Sandeep` | Workshop brand title. |
+| `reason` | String | `Needs further assistance` | *(Escalation only)* The reason why the user is escalating to human support. |
+| `cta_url` | String | `https://chat.whatsapp.com/...` | Destination URL opened in WhatsApp. |
+| `had_workshop` | Boolean | `true` | *(Escalation only)* Whether attendee had a confirmed registration. |
+| `flow_context` | String | `paid_workshop` | *(Escalation only)* `'paid_workshop'` \| `'attempted_order'` \| `'unregistered_search'`. |

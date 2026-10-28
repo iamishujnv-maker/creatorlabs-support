@@ -87,3 +87,14 @@ chat_restarted,Fired when user clicks Restart Chat in the top-right header,had_s
 chat_restarted,Fired when user clicks Restart Chat in the top-right header,had_completed_flow,Boolean,false,Whether user had reached SUCCESS_CLOSING or ESCALATION,Yes
 chat_restarted,Fired when user clicks Restart Chat in the top-right header,user_identifier,String,8949219529,Attendee phone or email,Yes
 chat_restarted,Fired when user clicks Restart Chat in the top-right header,identifier_type,String,phone,'phone' or 'email',Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,cta_name,String,join_whatsapp_community,'join_whatsapp_community' / 'message_on_whatsapp' / 'open_whatsapp_community_live_now',Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,cta_type,String,whatsapp_community,'whatsapp_community' / 'whatsapp_escalation' / 'whatsapp_creator',Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,cta_label,String,Join WhatsApp Community,Exact button text shown to attendee,Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,issue_key,String,ZOOM_LINK,The issue key currently being handled (or 'none'),Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,issue_label,String,Where can I get the Zoom link?,The user-facing issue button text (or 'none'),Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,domain,String,growthcoachsandeep.creatorlabs.in,Workshop domain,Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,brand_name,String,Growth Coach Sandeep,Workshop brand name,Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,reason,String,Needs further assistance,Escalation reason (for escalation CTAs),Conditional
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,cta_url,String,https://chat.whatsapp.com/...,Target destination URL,Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,user_identifier,String,8949219529,Attendee phone or email,Yes
+cta_clicked,Fired when user clicks on any WhatsApp CTA button,identifier_type,String,phone,'phone' or 'email',Yes
