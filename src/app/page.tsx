@@ -641,7 +641,7 @@ export default function SupportAssistantPage() {
     });
 
     const communityLink = selectedWorkshop.whatsappCommunityLink || 'https://chat.whatsapp.com/';
-    const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP' || issueKey === 'WORKSHOP_LEARNINGS');
+    const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP');
     const ctaType = issueKey === 'COURSE_ACCESS' ? 'creator_contact' : hasCta ? 'whatsapp_community' : 'none';
 
     // 2. Fire resolution_viewed slightly after so it chronologically succeeds issue_selected when the bot card displays
@@ -738,12 +738,12 @@ export default function SupportAssistantPage() {
               id: `res-${Date.now()}`,
               kind: 'resolution_cta',
               messages: [
-                `Here are the key topics and highlights covered in ${selectedWorkshop.brandName}:`,
+                'Here are the key topics and highlights covered:',
               ],
               bullets: learnings,
               bulletsHeader: header,
-              ctaLink: communityLink,
-              ctaText: 'Join WhatsApp Community',
+              ctaLink: null,
+              ctaText: '',
               issueKey,
               issueLabel,
               answered: null,
@@ -757,11 +757,11 @@ export default function SupportAssistantPage() {
               id: `res-${Date.now()}`,
               kind: 'resolution_cta',
               messages: [
+                'Here are the key topics and highlights covered:',
                 `The complete curriculum, session agenda, and bonus materials for ${selectedWorkshop.brandName} are shared directly inside the official WhatsApp community.`,
-                'Join the community group below to access all announcements and workshop resources!',
               ],
-              ctaLink: communityLink,
-              ctaText: 'Join WhatsApp Community',
+              ctaLink: null,
+              ctaText: '',
               issueKey,
               issueLabel,
               answered: null,
@@ -1915,8 +1915,7 @@ export default function SupportAssistantPage() {
                               <div className="learnings-list">
                                 {item.bullets.map((bullet, idx) => (
                                   <div key={idx} className="learning-pointer-item">
-                                    <span className="learning-pointer-bullet">✓</span>
-                                    <span className="learning-pointer-text">{bullet.replace(/^\d+[\.\)]\s*/, '')}</span>
+                                    <span className="learning-pointer-text">{bullet}</span>
                                   </div>
                                 ))}
                               </div>
