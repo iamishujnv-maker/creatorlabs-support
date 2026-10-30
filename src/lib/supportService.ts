@@ -24,6 +24,8 @@ export interface PaidWorkshopItem {
   creatorSupportEmail: string | null;
   nextWorkshopDate?: string | null;
   nextWorkshopTime?: string | null;
+  workshopLearnings?: string[];
+  workshopLearningsHeader?: string | null;
 }
 
 export interface AttemptedWorkshopItem {
@@ -377,6 +379,39 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
       const nextWorkshopDate = constantsObj.WORKSHOP_DATE ? String(constantsObj.WORKSHOP_DATE) : null;
       const nextWorkshopTime = constantsObj.WORKSHOP_TIME ? String(constantsObj.WORKSHOP_TIME) : null;
 
+      // Extract workshop learnings pointers from constants table
+      let workshopLearnings: string[] = [];
+      const rawLearnings =
+        constantsObj.WORKSHOP_LEARNINGS ||
+        constantsObj['Workshop Learnings'] ||
+        constantsObj.workshop_learnings;
+
+      if (Array.isArray(rawLearnings)) {
+        workshopLearnings = rawLearnings
+          .map((item: any) => String(item).trim())
+          .filter(Boolean);
+      } else if (typeof rawLearnings === 'string') {
+        try {
+          const parsed = JSON.parse(rawLearnings);
+          if (Array.isArray(parsed)) {
+            workshopLearnings = parsed
+              .map((item: any) => String(item).trim())
+              .filter(Boolean);
+          } else {
+            workshopLearnings = [rawLearnings.trim()];
+          }
+        } catch {
+          workshopLearnings = rawLearnings
+            .split(/\r?\n/)
+            .map((s: string) => s.replace(/^[-•*]\s*/, '').trim())
+            .filter(Boolean);
+        }
+      }
+
+      const workshopLearningsHeader = constantsObj.WORKSHOP_LEARNINGS_HEADER
+        ? String(constantsObj.WORKSHOP_LEARNINGS_HEADER).trim()
+        : null;
+
       const rawAmount = typeof order.amount === 'number' ? order.amount : Number(order.amount) || 0;
       // In Razorpay, amount is stored in paise (e.g. 100 paise = ₹1, 2100 paise = ₹21)
       const amount = rawAmount >= 100 ? Math.round(rawAmount / 100) : rawAmount;
@@ -418,6 +453,8 @@ export async function lookupSupportAttendee(rawInput: string): Promise<SupportLo
         creatorSupportEmail,
         nextWorkshopDate,
         nextWorkshopTime,
+        workshopLearnings,
+        workshopLearningsHeader,
       };
     });
 

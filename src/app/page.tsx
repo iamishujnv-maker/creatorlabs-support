@@ -49,6 +49,7 @@ type Step =
   | 'CREATOR_CONTACT'
   | 'ATTEMPTED_LIST'
   | 'NOT_FOUND_FIRST'
+  | 'ESCALATION_INPUT'
   | 'ESCALATION'
   | 'SUCCESS_CLOSING';
 
@@ -117,6 +118,8 @@ export type ChatFeedItem =
       answered?: 'yes' | 'no' | boolean | null;
       issueKey?: string;
       issueLabel?: string;
+      bullets?: string[];
+      bulletsHeader?: string | null;
     }
   | {
       id: string;
@@ -145,8 +148,15 @@ export type ChatFeedItem =
     }
   | {
       id: string;
+      kind: 'escalation_input_prompt';
+      reason: string;
+      answered?: boolean | null;
+    }
+  | {
+      id: string;
       kind: 'escalation';
       reason: string;
+      userMessage?: string;
     }
   | {
       id: string;
@@ -169,6 +179,8 @@ export default function SupportAssistantPage() {
   const [attemptedOrders, setAttemptedOrders] = useState<AttemptedWorkshopItem[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<string>('');
   const [selectedIssueKey, setSelectedIssueKey] = useState<string>('');
+  const [escalationUserMessage, setEscalationUserMessage] = useState<string>('');
+  const [escalationReason, setEscalationReason] = useState<string>('');
 
   // Config
   const [centralWhatsApp, setCentralWhatsApp] = useState<string>('918949451726');
@@ -229,6 +241,8 @@ export default function SupportAssistantPage() {
     setAttemptedOrders([]);
     setSelectedIssue('');
     setSelectedIssueKey('');
+    setEscalationUserMessage('');
+    setEscalationReason('');
     setChatFeed([{ id: 'welcome', kind: 'bot_welcome' }]);
   };
 
@@ -627,7 +641,7 @@ export default function SupportAssistantPage() {
     });
 
     const communityLink = selectedWorkshop.whatsappCommunityLink || 'https://chat.whatsapp.com/';
-    const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP');
+    const hasCta = Boolean(communityLink) && (issueKey === 'ZOOM_LINK' || issueKey === 'WA_COMMUNITY' || issueKey === 'MISSED_WORKSHOP' || issueKey === 'WORKSHOP_LEARNINGS');
     const ctaType = issueKey === 'COURSE_ACCESS' ? 'creator_contact' : hasCta ? 'whatsapp_community' : 'none';
 
     // 2. Fire resolution_viewed slightly after so it chronologically succeeds issue_selected when the bot card displays
@@ -711,6 +725,52 @@ export default function SupportAssistantPage() {
         ]);
         setStep('RESOLUTION_CTA');
         break;
+
+      case 'WORKSHOP_LEARNINGS': {
+        const learnings = selectedWorkshop.workshopLearnings || [];
+        const header = selectedWorkshop.workshopLearningsHeader || 'What you will learn in this workshop:';
+
+        if (learnings.length > 0) {
+          setChatFeed((prev) => [
+            ...prev,
+            { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
+            {
+              id: `res-${Date.now()}`,
+              kind: 'resolution_cta',
+              messages: [
+                `Here are the key topics and highlights covered in ${selectedWorkshop.brandName}:`,
+              ],
+              bullets: learnings,
+              bulletsHeader: header,
+              ctaLink: communityLink,
+              ctaText: 'Join WhatsApp Community',
+              issueKey,
+              issueLabel,
+              answered: null,
+            },
+          ]);
+        } else {
+          setChatFeed((prev) => [
+            ...prev,
+            { id: `user-${Date.now()}`, kind: 'user_message', text: issueLabel, time: timeNow },
+            {
+              id: `res-${Date.now()}`,
+              kind: 'resolution_cta',
+              messages: [
+                `The complete curriculum, session agenda, and bonus materials for ${selectedWorkshop.brandName} are shared directly inside the official WhatsApp community.`,
+                'Join the community group below to access all announcements and workshop resources!',
+              ],
+              ctaLink: communityLink,
+              ctaText: 'Join WhatsApp Community',
+              issueKey,
+              issueLabel,
+              answered: null,
+            },
+          ]);
+        }
+        setStep('RESOLUTION_CTA');
+        break;
+      }
 
       case 'CHANGE_TIMING':
         setChatFeed((prev) => [
@@ -1004,10 +1064,11 @@ export default function SupportAssistantPage() {
     }
   };
 
-  // Trigger Escalation
+  // Trigger Escalation Flow (prompts user to type their issue first)
   const triggerEscalation = (reason?: string) => {
     const finalReason = reason || selectedIssue || 'General Query';
     setSelectedIssue(finalReason);
+    setEscalationReason(finalReason);
 
     trackEvent('escalation_triggered', {
       reason: finalReason,
@@ -1023,12 +1084,96 @@ export default function SupportAssistantPage() {
     setChatFeed((prev) => [
       ...prev,
       {
-        id: `escalation-${Date.now()}`,
-        kind: 'escalation',
+        id: `esc-prompt-${Date.now()}`,
+        kind: 'escalation_input_prompt',
         reason: finalReason,
+        answered: false,
       },
     ]);
+    setStep('ESCALATION_INPUT');
+    setInputValue('');
+    setTimeout(() => {
+      scrollToBottom();
+    }, 80);
+  };
+
+  // Submit Typed Message for Support & Transition to WhatsApp Hand-off
+  const handleSendEscalationMessage = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const timeNow = getCurrentTime();
+    setEscalationUserMessage(trimmed);
+    setInputValue('');
+
+    // Mark prompt as answered so skip chip settles
+    setChatFeed((prev) =>
+      prev.map((item) =>
+        item.kind === 'escalation_input_prompt' ? { ...item, answered: true } : item
+      )
+    );
+
+    // Track escalation_message_sent event with message_text
+    trackEvent('escalation_message_sent', {
+      message_text: trimmed,
+      char_count: trimmed.length,
+      issue_key: selectedIssueKey || 'none',
+      issue_label: selectedIssue || escalationReason || 'none',
+      reason: escalationReason || 'Needs further assistance',
+      domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
+      brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
+      had_workshop: Boolean(selectedWorkshop),
+      flow_context: selectedWorkshop
+        ? 'paid_workshop'
+        : attemptedOrders.length > 0
+        ? 'attempted_order'
+        : 'unregistered_search',
+    });
+
+    // Add user message bubble and the escalation card
+    setChatFeed((prev) => [
+      ...prev,
+      {
+        id: `user-msg-${Date.now()}`,
+        kind: 'user_message',
+        text: trimmed,
+        time: timeNow,
+      },
+      {
+        id: `escalation-${Date.now()}`,
+        kind: 'escalation',
+        reason: escalationReason || 'Needs further assistance',
+        userMessage: trimmed,
+      },
+    ]);
+
     setStep('ESCALATION');
+    setTimeout(() => {
+      scrollToBottom();
+    }, 80);
+  };
+
+  // Skip typing and open WhatsApp directly
+  const handleSkipToWhatsApp = (feedItemId: string, reason: string) => {
+    setChatFeed((prev) =>
+      prev.map((item) =>
+        item.id === feedItemId ? { ...item, answered: true } : item
+      )
+    );
+
+    setChatFeed((prev) => [
+      ...prev,
+      {
+        id: `escalation-${Date.now()}`,
+        kind: 'escalation',
+        reason: reason || 'Needs further assistance',
+      },
+    ]);
+
+    setStep('ESCALATION');
+    setTimeout(() => {
+      scrollToBottom();
+    }, 80);
   };
 
   // Check other workshops
@@ -1073,13 +1218,19 @@ export default function SupportAssistantPage() {
     setStep('CREATOR_CONTACT');
   };
 
-  // Build WhatsApp Support URL
-  const getEscalationWhatsAppUrl = () => {
+  // Build WhatsApp Support URL with optional custom user message
+  const getEscalationWhatsAppUrl = (customMsg?: string) => {
     let msg = '';
+    const userMsg = customMsg || escalationUserMessage;
+
     if (selectedWorkshop) {
       msg = `Hi, I need help with my workshop booking.\nOrder ID: ${selectedWorkshop.orderId}\nWorkshop: ${selectedWorkshop.brandName}\nIssue: ${selectedIssue || 'Support inquiry'}`;
     } else {
       msg = `Hi, I need help finding my workshop registration.\nRegistered ${isEmailLookup ? 'Email' : 'Mobile'}: ${currentQuery}`;
+    }
+
+    if (userMsg && userMsg.trim()) {
+      msg += `\n\nMy Message:\n"${userMsg.trim()}"`;
     }
 
     return `https://wa.me/${centralWhatsApp}?text=${encodeURIComponent(msg)}`;
@@ -1541,6 +1692,15 @@ export default function SupportAssistantPage() {
                               </button>
                               <button
                                 type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'WORKSHOP_LEARNINGS', 'What will I learn in this workshop?')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>What will I learn in this workshop?</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleIssueSelect(item.id, 'CHANGE_TIMING', 'Can I change my workshop timing or batch?')}
                                 className="zomato-option-row"
                               >
@@ -1559,6 +1719,15 @@ export default function SupportAssistantPage() {
                                 className="zomato-option-row"
                               >
                                 <span>I missed / couldn’t attend the workshop</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'WORKSHOP_LEARNINGS', 'What will I learn in this workshop?')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>What will I learn in this workshop?</span>
                               </button>
                               <button
                                 type="button"
@@ -1599,6 +1768,15 @@ export default function SupportAssistantPage() {
                                 className="zomato-option-row"
                               >
                                 <span>I missed / couldn’t attend the workshop</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'WORKSHOP_LEARNINGS', 'What will I learn in this workshop?')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>What will I learn in this workshop?</span>
                               </button>
                               <button
                                 type="button"
@@ -1644,6 +1822,15 @@ export default function SupportAssistantPage() {
                               </button>
                               <button
                                 type="button"
+                                onClick={() =>
+                                  handleIssueSelect(item.id, 'WORKSHOP_LEARNINGS', 'What will I learn in this workshop?')
+                                }
+                                className="zomato-option-row"
+                              >
+                                <span>What will I learn in this workshop?</span>
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => handleIssueSelect(item.id, 'CHANGE_TIMING', 'Can I change my workshop timing or batch?')}
                                 className="zomato-option-row"
                               >
@@ -1677,7 +1864,7 @@ export default function SupportAssistantPage() {
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
                         {item.messages.map((msg, i) => {
-                          const isLast = i === item.messages.length - 1;
+                          const isLast = i === item.messages.length - 1 && (!item.bullets || item.bullets.length === 0);
                           if (isLast && item.ctaLink) {
                             return (
                               <div key={i} className="chat-bubble-bot chat-bubble-with-cta">
@@ -1715,6 +1902,54 @@ export default function SupportAssistantPage() {
                             </div>
                           );
                         })}
+
+                        {item.bullets && item.bullets.length > 0 && (
+                          <div className={`chat-bubble-bot ${item.ctaLink ? 'chat-bubble-with-cta' : ''}`}>
+                            <div className="learnings-card-inner">
+                              <div className="learnings-header-row">
+                                <span className="learnings-icon-badge">✨</span>
+                                <span className="learnings-header-title">
+                                  {item.bulletsHeader || 'What you will learn in this workshop:'}
+                                </span>
+                              </div>
+                              <div className="learnings-list">
+                                {item.bullets.map((bullet, idx) => (
+                                  <div key={idx} className="learning-pointer-item">
+                                    <span className="learning-pointer-bullet">✓</span>
+                                    <span className="learning-pointer-text">{bullet.replace(/^\d+[\.\)]\s*/, '')}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {item.ctaLink && (
+                              <div className="chat-bubble-cta-wrapper">
+                                <a
+                                  href={item.ctaLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn-bubble-whatsapp"
+                                  onClick={() => {
+                                    trackEvent('cta_clicked', {
+                                      cta_name: 'join_whatsapp_community',
+                                      cta_type: 'whatsapp_community',
+                                      cta_label: item.ctaText,
+                                      issue_key: item.issueKey || selectedIssueKey || 'none',
+                                      issue_label: item.issueLabel || selectedIssue || 'none',
+                                      domain: selectedWorkshop?.domain || 'unknown',
+                                      brand_name: selectedWorkshop?.brandName || 'unknown',
+                                      status_category: selectedWorkshop?.statusCategory,
+                                      cta_url: item.ctaLink,
+                                    });
+                                  }}
+                                >
+                                  <WhatsAppIcon size={16} />
+                                  <span>{item.ctaText}</span>
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1984,7 +2219,7 @@ export default function SupportAssistantPage() {
                   </div>
                 );
 
-              case 'escalation':
+              case 'escalation_input_prompt':
                 return (
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="chat-row-bot">
@@ -1992,13 +2227,44 @@ export default function SupportAssistantPage() {
                         <div className="chat-bubble-bot">
                           Sorry this didn’t sort it out! Someone from our support team will help you personally.
                         </div>
+                        <div className="chat-bubble-bot">
+                          Please describe your query or problem below so our team has full context:
+                        </div>
+                      </div>
+                    </div>
+
+                    {!item.answered && step === 'ESCALATION_INPUT' && (
+                      <div className="chips-container" style={{ marginTop: 2 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSkipToWhatsApp(item.id, item.reason)}
+                          className="chip-btn"
+                        >
+                          <WhatsAppIcon size={14} style={{ color: '#25D366' }} />
+                          <span>Skip & open WhatsApp directly</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+
+              case 'escalation':
+                return (
+                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="chat-row-bot">
+                      <div className="chat-bubble-stack">
+                        <div className="chat-bubble-bot">
+                          {item.userMessage
+                            ? 'Thank you for providing the details! Your message and booking info have been pre-filled for WhatsApp.'
+                            : 'Someone from our support team will help you personally.'}
+                        </div>
                         <div className="chat-bubble-bot chat-bubble-with-cta">
                           <div>
-                            Message us on WhatsApp and we’ll reply within {supportSlaText}. Your booking details are already pre-filled in the message.
+                            Message us on WhatsApp and we’ll reply within {supportSlaText}.
                           </div>
                           <div className="chat-bubble-cta-wrapper">
                             <a
-                              href={getEscalationWhatsAppUrl()}
+                              href={getEscalationWhatsAppUrl(item.userMessage)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn-bubble-whatsapp"
@@ -2006,7 +2272,9 @@ export default function SupportAssistantPage() {
                                 trackEvent('cta_clicked', {
                                   cta_name: 'message_on_whatsapp',
                                   cta_type: 'whatsapp_escalation',
-                                  cta_label: 'Message us on WhatsApp',
+                                  cta_label: item.userMessage ? 'Open WhatsApp to Send' : 'Message us on WhatsApp',
+                                  has_custom_message: Boolean(item.userMessage),
+                                  custom_message_preview: item.userMessage ? item.userMessage.slice(0, 80) : undefined,
                                   issue_key: selectedIssueKey || 'none',
                                   issue_label: selectedIssue || item.reason || 'none',
                                   reason: item.reason,
@@ -2018,12 +2286,12 @@ export default function SupportAssistantPage() {
                                     : attemptedOrders.length > 0
                                     ? 'attempted_order'
                                     : 'unregistered_search',
-                                  cta_url: getEscalationWhatsAppUrl(),
+                                  cta_url: getEscalationWhatsAppUrl(item.userMessage),
                                 });
                               }}
                             >
                               <WhatsAppIcon size={16} />
-                              <span>Message us on WhatsApp</span>
+                              <span>{item.userMessage ? 'Open WhatsApp to Send' : 'Message us on WhatsApp'}</span>
                             </a>
                           </div>
                         </div>
@@ -2081,7 +2349,7 @@ export default function SupportAssistantPage() {
         </main>
 
         {/* Native Messaging Bottom Input Bar */}
-        {(step === 'WELCOME' || step === 'NOT_FOUND_FIRST') && (
+        {(step === 'WELCOME' || step === 'NOT_FOUND_FIRST' || step === 'ESCALATION_INPUT') && (
           <footer className="chat-bottom-bar">
             {inputError && (
               <div className="bottom-error-banner">
@@ -2098,40 +2366,56 @@ export default function SupportAssistantPage() {
             )}
 
             <div className={`bottom-input-container ${inputError ? 'has-error' : ''}`}>
-              <User size={16} style={{ color: '#94a3b8' }} />
+              {step === 'ESCALATION_INPUT' ? (
+                <MessageSquare size={16} style={{ color: '#94a3b8' }} />
+              ) : (
+                <User size={16} style={{ color: '#94a3b8' }} />
+              )}
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => {
-                  const noSpaces = e.target.value.replace(/\s+/g, '');
-                  setInputValue(noSpaces);
+                  if (step === 'ESCALATION_INPUT') {
+                    setInputValue(e.target.value);
+                  } else {
+                    const noSpaces = e.target.value.replace(/\s+/g, '');
+                    setInputValue(noSpaces);
+                  }
                   if (inputError) setInputError(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === ' ') {
+                  if (step !== 'ESCALATION_INPUT' && e.key === ' ') {
                     e.preventDefault();
                     return;
                   }
                   if (e.key === 'Enter') {
-                    executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
+                    if (step === 'ESCALATION_INPUT') {
+                      handleSendEscalationMessage(inputValue);
+                    } else {
+                      executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
+                    }
                   }
                 }}
                 onPaste={(e) => {
-                  e.preventDefault();
-                  const pasteText = e.clipboardData.getData('text').replace(/\s+/g, '');
-                  setInputValue(pasteText);
-                  if (inputError) setInputError(null);
+                  if (step !== 'ESCALATION_INPUT') {
+                    e.preventDefault();
+                    const pasteText = e.clipboardData.getData('text').replace(/\s+/g, '');
+                    setInputValue(pasteText);
+                    if (inputError) setInputError(null);
+                  }
                 }}
                 placeholder={
-                  step === 'NOT_FOUND_FIRST'
+                  step === 'ESCALATION_INPUT'
+                    ? 'Type your message for our support team...'
+                    : step === 'NOT_FOUND_FIRST'
                     ? 'Different phone number or email ID'
                     : '10-digit mobile or email ID'
                 }
                 className="bottom-text-input"
                 autoComplete="off"
                 autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
+                autoCapitalize={step === 'ESCALATION_INPUT' ? 'sentences' : 'none'}
+                spellCheck={step === 'ESCALATION_INPUT'}
                 onFocus={() => {
                   scrollToBottom();
                 }}
@@ -2139,7 +2423,13 @@ export default function SupportAssistantPage() {
 
               <button
                 type="button"
-                onClick={() => executeLookup(inputValue, step === 'NOT_FOUND_FIRST')}
+                onClick={() => {
+                  if (step === 'ESCALATION_INPUT') {
+                    handleSendEscalationMessage(inputValue);
+                  } else {
+                    executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
+                  }
+                }}
                 disabled={!inputValue.trim()}
                 className={`btn-bottom-send ${inputValue.trim() ? 'active' : ''}`}
                 aria-label="Send"
@@ -2149,8 +2439,17 @@ export default function SupportAssistantPage() {
             </div>
 
             <div className="bottom-footnote-row">
-              <Lock size={12} />
-              <span>Only used to find your booking. We never ask for OTP.</span>
+              {step === 'ESCALATION_INPUT' ? (
+                <>
+                  <WhatsAppIcon size={12} style={{ color: '#25D366' }} />
+                  <span>Your message will be pre-filled in WhatsApp automatically.</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={12} />
+                  <span>Only used to find your booking. We never ask for OTP.</span>
+                </>
+              )}
             </div>
           </footer>
         )}

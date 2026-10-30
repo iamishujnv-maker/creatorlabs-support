@@ -112,7 +112,7 @@ Once the user enters their phone number or email, Mixpanel calls `mixpanel.ident
 
 | Property Name | Data Type | Example Value | Meaning & Possible Values |
 | :--- | :--- | :--- | :--- |
-| `issue_key` | String | `ZOOM_LINK` | Standardized internal issue code: <br>• `'ZOOM_LINK'`: Where is Zoom link / how to join.<br>• `'WA_COMMUNITY'`: Need WhatsApp community link.<br>• `'WANT_REFUND'`: Refund / cancellation inquiry.<br>• `'RECORDING_REQUEST'`: Wants video recording access.<br>• `'MISSED_WORKSHOP'`: Missed session / what to do.<br>• `'CHANGE_TIMING'`: Rescheduling to next batch.<br>• `'COURSE_ACCESS'`: LMS / bonus course access.<br>• `'SOMETHING_ELSE'`: Other / custom query. |
+| `issue_key` | String | `ZOOM_LINK` | Standardized internal issue code: <br>• `'ZOOM_LINK'`: Where is Zoom link / how to join.<br>• `'WA_COMMUNITY'`: Need WhatsApp community link.<br>• `'WORKSHOP_LEARNINGS'`: What will I learn in this workshop.<br>• `'WANT_REFUND'`: Refund / cancellation inquiry.<br>• `'RECORDING_REQUEST'`: Wants video recording access.<br>• `'MISSED_WORKSHOP'`: Missed session / what to do.<br>• `'CHANGE_TIMING'`: Rescheduling to next batch.<br>• `'COURSE_ACCESS'`: LMS / bonus course access.<br>• `'SOMETHING_ELSE'`: Other / custom query. |
 | `issue_label` | String | `Where can I get the Zoom link?` | Exact button label text shown to the user. |
 | `domain` | String | `growthcoach.creatorlabs.in` | Workshop domain associated with the inquiry. |
 | `brand_name` | String | `Growth Coach Sandeep` | Brand name of the workshop. |

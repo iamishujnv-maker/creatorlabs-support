@@ -36,7 +36,7 @@ workshop_selected,Fired when user selects one workshop from their registrations 
 workshop_selected,Fired when user selects one workshop from their registrations list,identifier_type,String,phone,'phone' or 'email',Yes
 workshop_selected,Fired when user selects one workshop from their registrations list,phone_number,String,8949219529,Attendee phone number,Conditional
 workshop_selected,Fired when user selects one workshop from their registrations list,email,String,user@example.com,Attendee email address,Conditional
-issue_selected,Fired when user selects a specific issue to get help with,issue_key,String,ZOOM_LINK,When user clicks an issue button (ZOOM_LINK / WA_COMMUNITY / WANT_REFUND / RECORDING_REQUEST / MISSED_WORKSHOP / CHANGE_TIMING / COURSE_ACCESS / SOMETHING_ELSE),Yes
+issue_selected,Fired when user selects a specific issue to get help with,issue_key,String,ZOOM_LINK,When user clicks an issue button (ZOOM_LINK / WA_COMMUNITY / WORKSHOP_LEARNINGS / WANT_REFUND / RECORDING_REQUEST / MISSED_WORKSHOP / CHANGE_TIMING / COURSE_ACCESS / SOMETHING_ELSE),Yes
 issue_selected,Fired when user selects a specific issue to get help with,issue_label,String,Where can I get the Zoom link?,Full user-facing button text,Yes
 issue_selected,Fired when user selects a specific issue to get help with,domain,String,growthcoachsandeep.creatorlabs.in,Selected workshop landing page domain,Yes
 issue_selected,Fired when user selects a specific issue to get help with,brand_name,String,Growth Coach Sandeep,Selected workshop brand name,Yes

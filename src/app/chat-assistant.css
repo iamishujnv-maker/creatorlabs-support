@@ -581,6 +581,68 @@
   flex-shrink: 0;
 }
 
+/* Workshop Learnings Highlights Card (H06) */
+.learnings-card-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.learnings-header-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: #0f172a;
+}
+
+.learnings-icon-badge {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.learnings-header-title {
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.learnings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 2px;
+}
+
+.learning-pointer-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1e293b;
+}
+
+.learning-pointer-bullet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.learning-pointer-text {
+  flex: 1;
+  word-break: break-word;
+}
+
 /* Legacy fallback block (deprecated in favor of in-bubble CTA) */
 .whatsapp-cta-block {
   margin-top: 4px;
