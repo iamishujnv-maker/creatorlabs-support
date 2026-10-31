@@ -972,7 +972,8 @@ export default function SupportAssistantPage() {
     });
 
     if (answer === 'no') {
-      setSelectedIssue('Payment not completed - needs assistance');
+      const reason = 'Payment not completed - needs assistance';
+      setSelectedIssue(reason);
       setChatFeed((prev) => [
         ...prev,
         {
@@ -981,13 +982,8 @@ export default function SupportAssistantPage() {
           text: 'No, I need more help',
           time: timeNow,
         },
-        {
-          id: `escalation-${Date.now()}`,
-          kind: 'escalation',
-          reason: 'Payment not completed - needs assistance',
-        },
       ]);
-      setStep('ESCALATION');
+      triggerEscalation(reason);
     } else {
       setChatFeed((prev) => [
         ...prev,
@@ -1029,7 +1025,8 @@ export default function SupportAssistantPage() {
     });
 
     if (answer === 'no') {
-      setSelectedIssue('Needs further assistance');
+      const reason = selectedIssue || 'Needs further assistance';
+      setSelectedIssue(reason);
       setChatFeed((prev) => [
         ...prev,
         {
@@ -1038,13 +1035,8 @@ export default function SupportAssistantPage() {
           text: 'No, I need more help',
           time: timeNow,
         },
-        {
-          id: `escalation-${Date.now()}`,
-          kind: 'escalation',
-          reason: 'Needs further assistance',
-        },
       ]);
-      setStep('ESCALATION');
+      triggerEscalation(reason);
     } else {
       setChatFeed((prev) => [
         ...prev,
@@ -1062,6 +1054,24 @@ export default function SupportAssistantPage() {
       ]);
       setStep('SUCCESS_CLOSING');
     }
+  };
+
+  // Build WhatsApp Support URL with optional custom user message
+  const getEscalationWhatsAppUrl = (customMsg?: string) => {
+    let msg = '';
+    const userMsg = customMsg || escalationUserMessage;
+
+    if (selectedWorkshop) {
+      msg = `Hi, I need help with my workshop booking.\nOrder ID: ${selectedWorkshop.orderId}\nWorkshop: ${selectedWorkshop.brandName}\nIssue: ${selectedIssue || 'Support inquiry'}`;
+    } else {
+      msg = `Hi, I need help finding my workshop registration.\nRegistered ${isEmailLookup ? 'Email' : 'Mobile'}: ${currentQuery}`;
+    }
+
+    if (userMsg && userMsg.trim()) {
+      msg += `\n\nMy Message:\n"${userMsg.trim()}"`;
+    }
+
+    return `https://wa.me/${centralWhatsApp}?text=${encodeURIComponent(msg)}`;
   };
 
   // Trigger Escalation Flow (prompts user to type their issue first)
@@ -1097,7 +1107,7 @@ export default function SupportAssistantPage() {
     }, 80);
   };
 
-  // Submit Typed Message for Support & Transition to WhatsApp Hand-off
+  // Submit Typed Message for Support & Open WhatsApp directly
   const handleSendEscalationMessage = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -1106,12 +1116,7 @@ export default function SupportAssistantPage() {
     setEscalationUserMessage(trimmed);
     setInputValue('');
 
-    // Mark prompt as answered so skip chip settles
-    setChatFeed((prev) =>
-      prev.map((item) =>
-        item.kind === 'escalation_input_prompt' ? { ...item, answered: true } : item
-      )
-    );
+    const waUrl = getEscalationWhatsAppUrl(trimmed);
 
     // Track escalation_message_sent event with message_text
     trackEvent('escalation_message_sent', {
@@ -1130,7 +1135,28 @@ export default function SupportAssistantPage() {
         : 'unregistered_search',
     });
 
-    // Add user message bubble and the escalation card
+    // Also track CTA clicked since WhatsApp is immediately launched
+    trackEvent('cta_clicked', {
+      cta_name: 'message_on_whatsapp',
+      cta_type: 'whatsapp_escalation',
+      cta_label: 'Message us on WhatsApp',
+      has_custom_message: true,
+      custom_message_preview: trimmed.slice(0, 80),
+      issue_key: selectedIssueKey || 'none',
+      issue_label: selectedIssue || escalationReason || 'none',
+      reason: escalationReason || 'Needs further assistance',
+      domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
+      brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
+      had_workshop: Boolean(selectedWorkshop),
+      flow_context: selectedWorkshop
+        ? 'paid_workshop'
+        : attemptedOrders.length > 0
+        ? 'attempted_order'
+        : 'unregistered_search',
+      cta_url: waUrl,
+    });
+
+    // Add user message bubble and the escalation fallback card
     setChatFeed((prev) => [
       ...prev,
       {
@@ -1148,29 +1174,12 @@ export default function SupportAssistantPage() {
     ]);
 
     setStep('ESCALATION');
-    setTimeout(() => {
-      scrollToBottom();
-    }, 80);
-  };
 
-  // Skip typing and open WhatsApp directly
-  const handleSkipToWhatsApp = (feedItemId: string, reason: string) => {
-    setChatFeed((prev) =>
-      prev.map((item) =>
-        item.id === feedItemId ? { ...item, answered: true } : item
-      )
-    );
+    // Immediately launch WhatsApp directly
+    if (typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+    }
 
-    setChatFeed((prev) => [
-      ...prev,
-      {
-        id: `escalation-${Date.now()}`,
-        kind: 'escalation',
-        reason: reason || 'Needs further assistance',
-      },
-    ]);
-
-    setStep('ESCALATION');
     setTimeout(() => {
       scrollToBottom();
     }, 80);
@@ -1218,23 +1227,6 @@ export default function SupportAssistantPage() {
     setStep('CREATOR_CONTACT');
   };
 
-  // Build WhatsApp Support URL with optional custom user message
-  const getEscalationWhatsAppUrl = (customMsg?: string) => {
-    let msg = '';
-    const userMsg = customMsg || escalationUserMessage;
-
-    if (selectedWorkshop) {
-      msg = `Hi, I need help with my workshop booking.\nOrder ID: ${selectedWorkshop.orderId}\nWorkshop: ${selectedWorkshop.brandName}\nIssue: ${selectedIssue || 'Support inquiry'}`;
-    } else {
-      msg = `Hi, I need help finding my workshop registration.\nRegistered ${isEmailLookup ? 'Email' : 'Mobile'}: ${currentQuery}`;
-    }
-
-    if (userMsg && userMsg.trim()) {
-      msg += `\n\nMy Message:\n"${userMsg.trim()}"`;
-    }
-
-    return `https://wa.me/${centralWhatsApp}?text=${encodeURIComponent(msg)}`;
-  };
 
   // Creator Initials
   const getInitials = (name: string) => {
@@ -2224,26 +2216,10 @@ export default function SupportAssistantPage() {
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
                         <div className="chat-bubble-bot">
-                          Sorry this didn’t sort it out! Someone from our support team will help you personally.
-                        </div>
-                        <div className="chat-bubble-bot">
-                          Please describe your query or problem below so our team has full context:
+                          Please type your query and send us.
                         </div>
                       </div>
                     </div>
-
-                    {!item.answered && step === 'ESCALATION_INPUT' && (
-                      <div className="chips-container" style={{ marginTop: 2 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleSkipToWhatsApp(item.id, item.reason)}
-                          className="chip-btn"
-                        >
-                          <WhatsAppIcon size={14} style={{ color: '#25D366' }} />
-                          <span>Skip & open WhatsApp directly</span>
-                        </button>
-                      </div>
-                    )}
                   </div>
                 );
 
@@ -2252,11 +2228,6 @@ export default function SupportAssistantPage() {
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
-                        <div className="chat-bubble-bot">
-                          {item.userMessage
-                            ? 'Thank you for providing the details! Your message and booking info have been pre-filled for WhatsApp.'
-                            : 'Someone from our support team will help you personally.'}
-                        </div>
                         <div className="chat-bubble-bot chat-bubble-with-cta">
                           <div>
                             Message us on WhatsApp and we’ll reply within {supportSlaText}.
@@ -2271,7 +2242,7 @@ export default function SupportAssistantPage() {
                                 trackEvent('cta_clicked', {
                                   cta_name: 'message_on_whatsapp',
                                   cta_type: 'whatsapp_escalation',
-                                  cta_label: item.userMessage ? 'Open WhatsApp to Send' : 'Message us on WhatsApp',
+                                  cta_label: 'Message us on WhatsApp',
                                   has_custom_message: Boolean(item.userMessage),
                                   custom_message_preview: item.userMessage ? item.userMessage.slice(0, 80) : undefined,
                                   issue_key: selectedIssueKey || 'none',
@@ -2290,7 +2261,7 @@ export default function SupportAssistantPage() {
                               }}
                             >
                               <WhatsAppIcon size={16} />
-                              <span>{item.userMessage ? 'Open WhatsApp to Send' : 'Message us on WhatsApp'}</span>
+                              <span>Message us on WhatsApp</span>
                             </a>
                           </div>
                         </div>
@@ -2405,7 +2376,7 @@ export default function SupportAssistantPage() {
                 }}
                 placeholder={
                   step === 'ESCALATION_INPUT'
-                    ? 'Type your message for our support team...'
+                    ? 'Type your query...'
                     : step === 'NOT_FOUND_FIRST'
                     ? 'Different phone number or email ID'
                     : '10-digit mobile or email ID'
@@ -2430,10 +2401,20 @@ export default function SupportAssistantPage() {
                   }
                 }}
                 disabled={!inputValue.trim()}
-                className={`btn-bottom-send ${inputValue.trim() ? 'active' : ''}`}
-                aria-label="Send"
+                className={`btn-bottom-send ${step === 'ESCALATION_INPUT' ? 'btn-send-whatsapp' : ''} ${
+                  inputValue.trim()
+                    ? step === 'ESCALATION_INPUT'
+                      ? 'active-whatsapp'
+                      : 'active'
+                    : ''
+                }`}
+                aria-label={step === 'ESCALATION_INPUT' ? 'Send on WhatsApp' : 'Send'}
               >
-                <ArrowUp size={18} />
+                {step === 'ESCALATION_INPUT' ? (
+                  <WhatsAppIcon size={18} />
+                ) : (
+                  <ArrowUp size={18} />
+                )}
               </button>
             </div>
 
@@ -2441,7 +2422,7 @@ export default function SupportAssistantPage() {
               {step === 'ESCALATION_INPUT' ? (
                 <>
                   <WhatsAppIcon size={12} style={{ color: '#25D366' }} />
-                  <span>Your message will be pre-filled in WhatsApp automatically.</span>
+                  <span>Opens WhatsApp directly with your query pre-filled</span>
                 </>
               ) : (
                 <>
