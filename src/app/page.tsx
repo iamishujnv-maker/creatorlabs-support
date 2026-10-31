@@ -49,7 +49,6 @@ type Step =
   | 'CREATOR_CONTACT'
   | 'ATTEMPTED_LIST'
   | 'NOT_FOUND_FIRST'
-  | 'ESCALATION_INPUT'
   | 'ESCALATION'
   | 'SUCCESS_CLOSING';
 
@@ -148,15 +147,8 @@ export type ChatFeedItem =
     }
   | {
       id: string;
-      kind: 'escalation_input_prompt';
-      reason: string;
-      answered?: boolean | null;
-    }
-  | {
-      id: string;
       kind: 'escalation';
       reason: string;
-      userMessage?: string;
     }
   | {
       id: string;
@@ -179,8 +171,6 @@ export default function SupportAssistantPage() {
   const [attemptedOrders, setAttemptedOrders] = useState<AttemptedWorkshopItem[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<string>('');
   const [selectedIssueKey, setSelectedIssueKey] = useState<string>('');
-  const [escalationUserMessage, setEscalationUserMessage] = useState<string>('');
-  const [escalationReason, setEscalationReason] = useState<string>('');
 
   // Config
   const [centralWhatsApp, setCentralWhatsApp] = useState<string>('918949451726');
@@ -241,8 +231,6 @@ export default function SupportAssistantPage() {
     setAttemptedOrders([]);
     setSelectedIssue('');
     setSelectedIssueKey('');
-    setEscalationUserMessage('');
-    setEscalationReason('');
     setChatFeed([{ id: 'welcome', kind: 'bot_welcome' }]);
   };
 
@@ -1056,29 +1044,22 @@ export default function SupportAssistantPage() {
     }
   };
 
-  // Build WhatsApp Support URL with optional custom user message
-  const getEscalationWhatsAppUrl = (customMsg?: string) => {
+  // Build WhatsApp Support URL
+  const getEscalationWhatsAppUrl = () => {
     let msg = '';
-    const userMsg = customMsg || escalationUserMessage;
-
     if (selectedWorkshop) {
       msg = `Hi, I need help with my workshop booking.\nOrder ID: ${selectedWorkshop.orderId}\nWorkshop: ${selectedWorkshop.brandName}\nIssue: ${selectedIssue || 'Support inquiry'}`;
     } else {
       msg = `Hi, I need help finding my workshop registration.\nRegistered ${isEmailLookup ? 'Email' : 'Mobile'}: ${currentQuery}`;
     }
 
-    if (userMsg && userMsg.trim()) {
-      msg += `\n\nMy Message:\n"${userMsg.trim()}"`;
-    }
-
     return `https://wa.me/${centralWhatsApp}?text=${encodeURIComponent(msg)}`;
   };
 
-  // Trigger Escalation Flow (prompts user to type their issue first)
+  // Trigger Escalation Flow
   const triggerEscalation = (reason?: string) => {
     const finalReason = reason || selectedIssue || 'General Query';
     setSelectedIssue(finalReason);
-    setEscalationReason(finalReason);
 
     trackEvent('escalation_triggered', {
       reason: finalReason,
@@ -1094,92 +1075,12 @@ export default function SupportAssistantPage() {
     setChatFeed((prev) => [
       ...prev,
       {
-        id: `esc-prompt-${Date.now()}`,
-        kind: 'escalation_input_prompt',
-        reason: finalReason,
-        answered: false,
-      },
-    ]);
-    setStep('ESCALATION_INPUT');
-    setInputValue('');
-    setTimeout(() => {
-      scrollToBottom();
-    }, 80);
-  };
-
-  // Submit Typed Message for Support & Open WhatsApp directly
-  const handleSendEscalationMessage = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-
-    const timeNow = getCurrentTime();
-    setEscalationUserMessage(trimmed);
-    setInputValue('');
-
-    const waUrl = getEscalationWhatsAppUrl(trimmed);
-
-    // Track escalation_message_sent event with message_text
-    trackEvent('escalation_message_sent', {
-      message_text: trimmed,
-      char_count: trimmed.length,
-      issue_key: selectedIssueKey || 'none',
-      issue_label: selectedIssue || escalationReason || 'none',
-      reason: escalationReason || 'Needs further assistance',
-      domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
-      brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
-      had_workshop: Boolean(selectedWorkshop),
-      flow_context: selectedWorkshop
-        ? 'paid_workshop'
-        : attemptedOrders.length > 0
-        ? 'attempted_order'
-        : 'unregistered_search',
-    });
-
-    // Also track CTA clicked since WhatsApp is immediately launched
-    trackEvent('cta_clicked', {
-      cta_name: 'message_on_whatsapp',
-      cta_type: 'whatsapp_escalation',
-      cta_label: 'Message us on WhatsApp',
-      has_custom_message: true,
-      custom_message_preview: trimmed.slice(0, 80),
-      issue_key: selectedIssueKey || 'none',
-      issue_label: selectedIssue || escalationReason || 'none',
-      reason: escalationReason || 'Needs further assistance',
-      domain: selectedWorkshop?.domain || (attemptedOrders[0]?.domain ?? 'none'),
-      brand_name: selectedWorkshop?.brandName || (attemptedOrders[0]?.brandName ?? 'none'),
-      had_workshop: Boolean(selectedWorkshop),
-      flow_context: selectedWorkshop
-        ? 'paid_workshop'
-        : attemptedOrders.length > 0
-        ? 'attempted_order'
-        : 'unregistered_search',
-      cta_url: waUrl,
-    });
-
-    // Add user message bubble and the escalation fallback card
-    setChatFeed((prev) => [
-      ...prev,
-      {
-        id: `user-msg-${Date.now()}`,
-        kind: 'user_message',
-        text: trimmed,
-        time: timeNow,
-      },
-      {
         id: `escalation-${Date.now()}`,
         kind: 'escalation',
-        reason: escalationReason || 'Needs further assistance',
-        userMessage: trimmed,
+        reason: finalReason,
       },
     ]);
-
     setStep('ESCALATION');
-
-    // Immediately launch WhatsApp directly
-    if (typeof window !== 'undefined') {
-      window.open(waUrl, '_blank');
-    }
-
     setTimeout(() => {
       scrollToBottom();
     }, 80);
@@ -2210,31 +2111,21 @@ export default function SupportAssistantPage() {
                   </div>
                 );
 
-              case 'escalation_input_prompt':
-                return (
-                  <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div className="chat-row-bot">
-                      <div className="chat-bubble-stack">
-                        <div className="chat-bubble-bot">
-                          Please type your query and send us.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-
               case 'escalation':
                 return (
                   <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div className="chat-row-bot">
                       <div className="chat-bubble-stack">
+                        <div className="chat-bubble-bot">
+                          Someone from our support team will help you personally.
+                        </div>
                         <div className="chat-bubble-bot chat-bubble-with-cta">
                           <div>
                             Message us on WhatsApp and we’ll reply within {supportSlaText}.
                           </div>
                           <div className="chat-bubble-cta-wrapper">
                             <a
-                              href={getEscalationWhatsAppUrl(item.userMessage)}
+                              href={getEscalationWhatsAppUrl()}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="btn-bubble-whatsapp"
@@ -2243,8 +2134,6 @@ export default function SupportAssistantPage() {
                                   cta_name: 'message_on_whatsapp',
                                   cta_type: 'whatsapp_escalation',
                                   cta_label: 'Message us on WhatsApp',
-                                  has_custom_message: Boolean(item.userMessage),
-                                  custom_message_preview: item.userMessage ? item.userMessage.slice(0, 80) : undefined,
                                   issue_key: selectedIssueKey || 'none',
                                   issue_label: selectedIssue || item.reason || 'none',
                                   reason: item.reason,
@@ -2256,7 +2145,7 @@ export default function SupportAssistantPage() {
                                     : attemptedOrders.length > 0
                                     ? 'attempted_order'
                                     : 'unregistered_search',
-                                  cta_url: getEscalationWhatsAppUrl(item.userMessage),
+                                  cta_url: getEscalationWhatsAppUrl(),
                                 });
                               }}
                             >
@@ -2319,7 +2208,7 @@ export default function SupportAssistantPage() {
         </main>
 
         {/* Native Messaging Bottom Input Bar */}
-        {(step === 'WELCOME' || step === 'NOT_FOUND_FIRST' || step === 'ESCALATION_INPUT') && (
+        {(step === 'WELCOME' || step === 'NOT_FOUND_FIRST') && (
           <footer className="chat-bottom-bar">
             {inputError && (
               <div className="bottom-error-banner">
@@ -2336,56 +2225,40 @@ export default function SupportAssistantPage() {
             )}
 
             <div className={`bottom-input-container ${inputError ? 'has-error' : ''}`}>
-              {step === 'ESCALATION_INPUT' ? (
-                <MessageSquare size={16} style={{ color: '#94a3b8' }} />
-              ) : (
-                <User size={16} style={{ color: '#94a3b8' }} />
-              )}
+              <User size={16} style={{ color: '#94a3b8' }} />
               <input
                 type="text"
                 value={inputValue}
                 onChange={(e) => {
-                  if (step === 'ESCALATION_INPUT') {
-                    setInputValue(e.target.value);
-                  } else {
-                    const noSpaces = e.target.value.replace(/\s+/g, '');
-                    setInputValue(noSpaces);
-                  }
+                  const noSpaces = e.target.value.replace(/\s+/g, '');
+                  setInputValue(noSpaces);
                   if (inputError) setInputError(null);
                 }}
                 onKeyDown={(e) => {
-                  if (step !== 'ESCALATION_INPUT' && e.key === ' ') {
+                  if (e.key === ' ') {
                     e.preventDefault();
                     return;
                   }
                   if (e.key === 'Enter') {
-                    if (step === 'ESCALATION_INPUT') {
-                      handleSendEscalationMessage(inputValue);
-                    } else {
-                      executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
-                    }
+                    executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
                   }
                 }}
                 onPaste={(e) => {
-                  if (step !== 'ESCALATION_INPUT') {
-                    e.preventDefault();
-                    const pasteText = e.clipboardData.getData('text').replace(/\s+/g, '');
-                    setInputValue(pasteText);
-                    if (inputError) setInputError(null);
-                  }
+                  e.preventDefault();
+                  const pasteText = e.clipboardData.getData('text').replace(/\s+/g, '');
+                  setInputValue(pasteText);
+                  if (inputError) setInputError(null);
                 }}
                 placeholder={
-                  step === 'ESCALATION_INPUT'
-                    ? 'Type your query...'
-                    : step === 'NOT_FOUND_FIRST'
+                  step === 'NOT_FOUND_FIRST'
                     ? 'Different phone number or email ID'
                     : '10-digit mobile or email ID'
                 }
                 className="bottom-text-input"
                 autoComplete="off"
                 autoCorrect="off"
-                autoCapitalize={step === 'ESCALATION_INPUT' ? 'sentences' : 'none'}
-                spellCheck={step === 'ESCALATION_INPUT'}
+                autoCapitalize="none"
+                spellCheck={false}
                 onFocus={() => {
                   scrollToBottom();
                 }}
@@ -2393,43 +2266,18 @@ export default function SupportAssistantPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  if (step === 'ESCALATION_INPUT') {
-                    handleSendEscalationMessage(inputValue);
-                  } else {
-                    executeLookup(inputValue, step === 'NOT_FOUND_FIRST');
-                  }
-                }}
+                onClick={() => executeLookup(inputValue, step === 'NOT_FOUND_FIRST')}
                 disabled={!inputValue.trim()}
-                className={`btn-bottom-send ${step === 'ESCALATION_INPUT' ? 'btn-send-whatsapp' : ''} ${
-                  inputValue.trim()
-                    ? step === 'ESCALATION_INPUT'
-                      ? 'active-whatsapp'
-                      : 'active'
-                    : ''
-                }`}
-                aria-label={step === 'ESCALATION_INPUT' ? 'Send on WhatsApp' : 'Send'}
+                className={`btn-bottom-send ${inputValue.trim() ? 'active' : ''}`}
+                aria-label="Send"
               >
-                {step === 'ESCALATION_INPUT' ? (
-                  <WhatsAppIcon size={18} />
-                ) : (
-                  <ArrowUp size={18} />
-                )}
+                <ArrowUp size={18} />
               </button>
             </div>
 
             <div className="bottom-footnote-row">
-              {step === 'ESCALATION_INPUT' ? (
-                <>
-                  <WhatsAppIcon size={12} style={{ color: '#25D366' }} />
-                  <span>Opens WhatsApp directly with your query pre-filled</span>
-                </>
-              ) : (
-                <>
-                  <Lock size={12} />
-                  <span>Only used to find your booking. We never ask for OTP.</span>
-                </>
-              )}
+              <Lock size={12} />
+              <span>Only used to find your booking. We never ask for OTP.</span>
             </div>
           </footer>
         )}

@@ -910,24 +910,6 @@
   transform: scale(1.02);
 }
 
-.btn-bottom-send.btn-send-whatsapp {
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-.btn-bottom-send.btn-send-whatsapp:disabled {
-  background: #f1f5f9;
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.btn-bottom-send.btn-send-whatsapp.active-whatsapp {
-  background: #25d366;
-  color: #ffffff;
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.35);
-}
-
 .btn-bottom-send:disabled {
   background: #e2e8f0;
   color: #94a3b8;
